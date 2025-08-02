@@ -1,42 +1,417 @@
+/* Reset the root container */
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* Remove default body margins */
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #1a1a1a;
+}
+
+/* Main app container */
+.App {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #1a1a1a;
+}
+
+/* Header styling - Only AI Assistant and user info */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background-color: #000000;
+  color: white;
+  border-bottom: 1px solid #333;
+  flex-shrink: 0;
+}
+
+.app-header h1 {
+  color: white;
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 600;
+}
+
+/* User info in top right */
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: white;
+}
+
+.user-info span {
+  color: #e0e0e0;
+  font-size: 0.9rem;
+}
+
+.logout-btn {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background-color 0.3s;
+}
+
+.logout-btn:hover {
+  background-color: #c82333;
+}
+
+/* Main content area - FORCE CENTER ALIGNMENT */
+main {
+  flex: 1;
+  background-color: #1a1a1a;
   padding: 2rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
   text-align: center;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+/* Navigation links styling - floating under header */
+.nav-links {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  width: 100%;
+  margin-top: -0.5rem;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
+.nav-links a {
+  color: #b0b0b0;
+  text-decoration: none;
+  font-size: 1.1rem;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  transition: all 0.3s;
+  position: relative;
+}
+
+.nav-links a::after {
+  content: '|';
+  position: absolute;
+  right: -0.25rem;
+  color: #666;
+}
+
+.nav-links a:last-child::after {
+  display: none;
+}
+
+.nav-links a:hover {
+  color: #61dafb;
+}
+
+.nav-links a.active {
+  color: #61dafb;
+  font-weight: 600;
+}
+
+/* Alternative style - more floating */
+.nav-links-alt {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  width: 100%;
+  margin-top: -0.5rem;
+}
+
+.nav-links-alt a {
+  color: #e0e0e0;
+  text-decoration: none;
+  font-size: 1.1rem;
+  font-weight: 500;
+  padding: 0.75rem 1.5rem;
+  border-radius: 25px;
+  transition: all 0.3s;
+  background-color: rgba(45, 45, 45, 0.9);
+  border: 1px solid #404040;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.nav-links-alt a:hover {
+  background-color: rgba(97, 218, 251, 0.1);
+  color: #87ceeb;
+  transform: translateY(-3px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.nav-links-alt a.active {
+  background-color: #61dafb;
+  color: #000;
+  font-weight: 600;
+  transform: translateY(-3px);
+  box-shadow: 0 4px 16px rgba(97, 218, 251, 0.4);
+}
+
+/* Page title styling */
+.page-title {
+  color: white;
+  font-size: 2.5rem;
+  font-weight: 600;
+  margin-bottom: 2rem;
+  text-align: center;
+  width: 100%;
+}
+
+/* Calendar container - PERFECTLY CENTERED */
+.calendar-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  margin: 0 auto;
+}
+
+/* For larger screens, use flexbox instead of grid for better centering */
+@media (min-width: 1024px) {
+  .calendar-container {
+    flex-direction: row;
+    justify-content: center;
+    align-items: flex-start;
+    max-width: 1400px;
+    gap: 3rem;
   }
-  to {
-    transform: rotate(360deg);
+}
+
+/* Calendar component styling - PERFECT CENTER */
+.calendar-section {
+  background: #2d2d2d;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  padding: 2rem;
+  border: 1px solid #404040;
+  color: white;
+  width: 100%;
+  max-width: 700px;
+  text-align: center;
+  margin: 0 auto;
+  flex-shrink: 0;
+}
+
+/* Override any left-alignment in calendar component */
+.calendar-section * {
+  text-align: center !important;
+}
+
+.calendar-section table {
+  margin: 0 auto !important;
+  text-align: center !important;
+}
+
+.calendar-section th,
+.calendar-section td {
+  text-align: center !important;
+}
+
+/* Events section - centered next to calendar */
+.events-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 350px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.add-event-section {
+  background: #2d2d2d;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  padding: 2rem;
+  border: 1px solid #404040;
+  text-align: center;
+  color: white;
+  width: 100%;
+}
+
+.add-event-section h2 {
+  margin-top: 0;
+  color: white;
+  font-size: 1.5rem;
+  text-align: center;
+}
+
+.add-event-section * {
+  text-align: center;
+}
+
+.daily-events-section {
+  background: #2d2d2d;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  padding: 2rem;
+  border: 1px solid #404040;
+  text-align: center;
+  color: white;
+  width: 100%;
+}
+
+.daily-events-section h2 {
+  margin-top: 0;
+  color: white;
+  font-size: 1.5rem;
+  text-align: center;
+}
+
+.daily-events-section * {
+  text-align: center;
+}
+
+/* About page styling */
+.about-container {
+  background: #2d2d2d;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  padding: 3rem;
+  border: 1px solid #404040;
+  text-align: center;
+  max-width: 800px;
+  margin: 0 auto;
+  color: white;
+  width: 100%;
+}
+
+.about-container h1 {
+  color: white;
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.about-container p {
+  color: #e0e0e0;
+  font-size: 1.2rem;
+  line-height: 1.6;
+  text-align: center;
+}
+
+/* Force center alignment for any calendar components */
+.react-calendar {
+  margin: 0 auto !important;
+  text-align: center !important;
+}
+
+.react-calendar__navigation {
+  justify-content: center !important;
+}
+
+.react-calendar__month-view {
+  text-align: center !important;
+}
+
+/* Loading and login styles */
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  font-size: 18px;
+  background-color: #1a1a1a;
+  color: white;
+}
+
+.login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.login-container h1 {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.login-container p {
+  font-size: 1.2rem;
+  margin-bottom: 2rem;
+  text-align: center;
+  opacity: 0.9;
+}
+
+.google-login-btn {
+  background-color: #4285f4;
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+}
+
+.google-login-btn:hover {
+  background-color: #357ae8;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(66, 133, 244, 0.4);
+}
+
+/* Responsive breakpoints */
+@media (max-width: 768px) {
+  .app-header {
+    padding: 1rem;
+  }
+  
+  main {
+    padding: 1rem;
+  }
+  
+  .calendar-container {
+    gap: 1rem;
+  }
+  
+  .calendar-section,
+  .add-event-section,
+  .daily-events-section {
+    padding: 1.5rem;
+  }
+  
+  .page-title {
+    font-size: 2rem;
+  }
+  
+  .nav-links {
+    gap: 1rem;
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
+@media (max-width: 480px) {
+  .app-header h1 {
+    font-size: 1.4rem;
   }
-}
-
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
+  
+  .nav-links a {
+    font-size: 1rem;
+    padding: 0.3rem 0.6rem;
+  }
+  
+  .page-title {
+    font-size: 1.8rem;
+  }
 }

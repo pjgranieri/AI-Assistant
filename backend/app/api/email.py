@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import Column, DateTime
 from app.db.models.email_summary import EmailSummary
 from app.deps import get_db
 from pydantic import BaseModel
@@ -22,8 +23,7 @@ class EmailSummaryRead(BaseModel):
     summary: str
     received_at: datetime.datetime
 
-    class Config:
-        orm_mode = True
+model_config = {"from_attributes": True} 
 
 @router.post("/summarize-email", response_model=EmailSummaryRead)
 def summarize_email(email: EmailSummaryCreate, db: Session = Depends(get_db)):
