@@ -73,7 +73,7 @@ export default function SimpleCalendar() {
         )
       })
 
-  // Handle event creation or editing with proper timezone handling
+  // FIXED: Handle event creation - keep time in local timezone
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     
@@ -83,18 +83,25 @@ export default function SimpleCalendar() {
     // Parse the time input (HH:MM format)
     const [hours, minutes] = time.split(':').map(Number)
     
-    // Create a new date object for the event
-    const eventDateTime = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), hours, minutes, 0, 0)
+    // Create the datetime string in the format the backend expects
+    // Format: YYYY-MM-DDTHH:mm:ss (without timezone conversion)
+    const year = eventDate.getFullYear()
+    const month = String(eventDate.getMonth() + 1).padStart(2, '0')
+    const day = String(eventDate.getDate()).padStart(2, '0')
+    const hourStr = String(hours).padStart(2, '0')
+    const minuteStr = String(minutes).padStart(2, '0')
+    
+    // Create ISO string but treat it as local time (no UTC conversion)
+    const localDateTimeString = `${year}-${month}-${day}T${hourStr}:${minuteStr}:00`
     
     console.log('Selected date:', eventDate.toDateString())
     console.log('Selected time:', time)
-    console.log('Combined datetime (local):', eventDateTime.toString())
-    console.log('ISO string being sent:', eventDateTime.toISOString())
+    console.log('Local datetime string being sent:', localDateTimeString)
     
     const payload = {
       title,
       description,
-      datetime: eventDateTime.toISOString(),
+      datetime: localDateTimeString, // Send as local time string
     }
     
     if (editingEvent) {
@@ -125,22 +132,41 @@ export default function SimpleCalendar() {
     setTime('12:00')
   }
 
-  // Start editing an event with proper time display
+  // FIXED: Start editing an event - extract local time properly
   function startEdit(ev: Event) {
     setEditingEvent(ev)
     setTitle(ev.title)
     setDescription(ev.description || '')
     
-    // Convert UTC time back to local time for display
-    const eventDate = new Date(ev.datetime)
-    const localTimeString = eventDate.toLocaleTimeString('en-US', { 
-      hour12: false, 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    })
+    // Parse the datetime string directly (don't convert to Date object)
+    const datetimeStr = ev.datetime
+    let timeString = '12:00'
     
-    setTime(localTimeString)
+    if (datetimeStr.includes('T')) {
+      // Extract time portion from ISO string
+      const timePart = datetimeStr.split('T')[1]
+      if (timePart) {
+        timeString = timePart.substring(0, 5) // Get HH:mm part
+      }
+    } else {
+      // Fallback: convert to date and extract time
+      const eventDate = new Date(ev.datetime)
+      timeString = eventDate.toLocaleTimeString('en-US', { 
+        hour12: false, 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      })
+    }
+    
+    setTime(timeString)
+    
+    // Set the date for the calendar
+    const eventDate = new Date(ev.datetime)
     setDate(eventDate)
+    
+    console.log('Editing event:', ev.title)
+    console.log('Original datetime:', ev.datetime)
+    console.log('Extracted time:', timeString)
   }
 
   // Cancel editing

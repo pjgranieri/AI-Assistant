@@ -5,14 +5,13 @@ from app.deps import get_db
 from pydantic import BaseModel
 from typing import List, Optional
 import datetime as dt
-import pytz
 
 router = APIRouter()
 
 class EventCreate(BaseModel):
     title: str
     description: Optional[str] = None
-    datetime: Optional[dt.datetime] = None
+    datetime: Optional[str] = None  # Change to string to handle local time
 
 class EventRead(BaseModel):
     id: int
@@ -28,13 +27,22 @@ class SettingsUpdate(BaseModel):
 
 @router.post("/events", response_model=EventRead)
 def create_event(event: EventCreate, db: Session = Depends(get_db)):
-    # Convert the datetime to UTC if it's not already
-    event_datetime = event.datetime or dt.datetime.utcnow()
+    # Parse the datetime string as local time
+    if event.datetime:
+        try:
+            # Parse the string as local time (no timezone conversion)
+            event_datetime = dt.datetime.fromisoformat(event.datetime.replace('Z', ''))
+            print(f"Parsed datetime as local time: {event_datetime}")
+        except ValueError:
+            # Fallback to current time if parsing fails
+            event_datetime = dt.datetime.now()
+            print(f"Failed to parse datetime, using current time: {event_datetime}")
+    else:
+        event_datetime = dt.datetime.now()
     
-    # Log for debugging
     print(f"Creating event: {event.title}")
-    print(f"Received datetime: {event_datetime}")
-    print(f"Datetime timezone info: {event_datetime.tzinfo}")
+    print(f"Received datetime string: {event.datetime}")
+    print(f"Storing datetime: {event_datetime}")
     
     db_event = Event(
         title=event.title,
@@ -45,7 +53,6 @@ def create_event(event: EventCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_event)
     
-    print(f"Stored datetime: {db_event.datetime}")
     return db_event
 
 @router.get("/events", response_model=List[EventRead])
@@ -61,7 +68,11 @@ def update_event(event_id: int, event: EventCreate, db: Session = Depends(get_db
     db_event.title = event.title
     db_event.description = event.description
     if event.datetime:
-        db_event.datetime = event.datetime
+        try:
+            event_datetime = dt.datetime.fromisoformat(event.datetime.replace('Z', ''))
+            db_event.datetime = event_datetime
+        except ValueError:
+            pass  # Keep existing datetime if parsing fails
         
     db.commit()
     db.refresh(db_event)
@@ -76,7 +87,7 @@ def delete_event(event_id: int, db: Session = Depends(get_db)):
     db.commit()
     return
 
-# NEW: Clear all events
+# Clear all events
 @router.delete("/events", status_code=204)
 def clear_all_events(db: Session = Depends(get_db)):
     """Clear all events from the calendar"""
@@ -85,7 +96,7 @@ def clear_all_events(db: Session = Depends(get_db)):
     print(f"Cleared {deleted_count} events from calendar")
     return
 
-# NEW: Get available timezones
+# Get available timezones
 @router.get("/timezones")
 def get_timezones():
     """Get list of common timezones"""
