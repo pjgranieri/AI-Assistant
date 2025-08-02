@@ -1,24 +1,40 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
 import './App.css'
 import SignIn from './components/SignIn'
+import Account from './components/Account'
+import SimpleCalendar from './components/Calendar'
+import { supabase } from './services/supabaseClient'
 
-// Example pages
 function Home() {
+  const [user, setUser] = useState<any>(null)
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUser(data.user))
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+    return () => listener?.subscription.unsubscribe()
+  }, [])
   return (
     <>
       <h1>Home Page</h1>
-      <SignIn />
+      {user ? (
+        <>
+          <Account />
+          <SimpleCalendar />
+        </>
+      ) : (
+        <SignIn />
+      )}
     </>
   )
 }
+
 function About() {
   return <h1>About Page</h1>
 }
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
     <BrowserRouter>
       <nav>
@@ -28,11 +44,6 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
       </Routes>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-      </div>
     </BrowserRouter>
   )
 }
