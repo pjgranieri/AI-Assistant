@@ -1,7 +1,10 @@
+import dotenv
+dotenv.load_dotenv()
+
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import email, event, user
+from app.api import email, event
 from app.deps import get_db
 
 app = FastAPI()
@@ -16,11 +19,14 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(email.router, prefix="/email", tags=["email"])
-app.include_router(event.router, prefix="/event", tags=["event"])
-app.include_router(user.router, prefix="/user", tags=["user"])
+app.include_router(event.router)
+app.include_router(email.router)
 
 # Example endpoint using DB session dependency
 @app.get("/health")
 def health_check(db=Depends(get_db)):
-    return {"status": "ok"} 
+    return {"status": "ok"}
+
+@app.get("/")
+def root():
+    return {"message": "API is running"}
