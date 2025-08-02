@@ -23,14 +23,24 @@ class EventRead(BaseModel):
 
 @router.post("/events", response_model=EventRead)
 def create_event(event: EventCreate, db: Session = Depends(get_db)):
+    # Convert the datetime to UTC if it's not already
+    event_datetime = event.datetime or dt.datetime.utcnow()
+    
+    # Log for debugging
+    print(f"Creating event: {event.title}")
+    print(f"Received datetime: {event_datetime}")
+    print(f"Datetime timezone info: {event_datetime.tzinfo}")
+    
     db_event = Event(
         title=event.title,
         description=event.description,
-        datetime=event.datetime or dt.datetime.utcnow()
+        datetime=event_datetime
     )
     db.add(db_event)
     db.commit()
     db.refresh(db_event)
+    
+    print(f"Stored datetime: {db_event.datetime}")
     return db_event
 
 @router.get("/events", response_model=List[EventRead])
@@ -42,9 +52,12 @@ def update_event(event_id: int, event: EventCreate, db: Session = Depends(get_db
     db_event = db.query(Event).filter(Event.id == event_id).first()
     if not db_event:
         raise HTTPException(status_code=404, detail="Event not found")
+    
     db_event.title = event.title
     db_event.description = event.description
-    db_event.datetime = event.datetime or db_event.datetime
+    if event.datetime:
+        db_event.datetime = event.datetime
+        
     db.commit()
     db.refresh(db_event)
     return db_event

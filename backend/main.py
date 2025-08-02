@@ -6,7 +6,7 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.api import email, event, auth
+from app.api import email, event, auth, ai_assistant  # Add ai_assistant
 from app.deps import get_db
 
 app = FastAPI()
@@ -27,6 +27,7 @@ app.add_middleware(
 app.include_router(email.router)
 app.include_router(event.router)
 app.include_router(auth.router)
+app.include_router(ai_assistant.router)  # Add this line
 
 @app.get("/health")
 def health_check(db=Depends(get_db)):
