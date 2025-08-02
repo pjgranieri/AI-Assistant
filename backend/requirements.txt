@@ -4,7 +4,9 @@ click==8.2.1
 fastapi==0.116.1
 h11==0.16.0
 idna==3.10
+langchain==0.2.1
 numpy==2.3.2
+openai==1.30.1
 pgvector==0.4.1
 psycopg2-binary==2.9.10
 pydantic==2.11.7

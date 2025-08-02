@@ -22,7 +22,7 @@ class EventRead(BaseModel):
     class Config:
         orm_mode = True
 
-@router.post("/create", response_model=EventRead)
+@router.post("/events", response_model=EventRead)
 def create_event(event: EventCreate, db: Session = Depends(get_db)):
     db_event = Event(
         title=event.title,
@@ -34,6 +34,6 @@ def create_event(event: EventCreate, db: Session = Depends(get_db)):
     db.refresh(db_event)
     return db_event
 
-@router.get("/get", response_model=List[EventRead])
+@router.get("/events", response_model=List[EventRead])
 def get_events(db: Session = Depends(get_db)):
     return db.query(Event).all()
