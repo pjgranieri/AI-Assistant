@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
 import './App.css'
 import SignIn from './components/SignIn'
 import Account from './components/Account'
+import SimpleCalendar from './components/Calendar'
 import { supabase } from './services/supabaseClient'
 
 function Home() {
@@ -17,7 +18,14 @@ function Home() {
   return (
     <>
       <h1>Home Page</h1>
-      {user ? <Account /> : <SignIn />}
+      {user ? (
+        <>
+          <Account />
+          <SimpleCalendar />
+        </>
+      ) : (
+        <SignIn />
+      )}
     </>
   )
 }

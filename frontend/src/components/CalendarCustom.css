@@ -1,0 +1,74 @@
+/* Calendar container */
+.react-calendar {
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  padding: 1rem;
+  font-family: inherit;
+}
+
+/* Calendar navigation */
+.react-calendar__navigation {
+  margin-bottom: 1em;
+}
+
+.react-calendar__navigation button {
+  color: #2563eb;
+  min-width: 44px;
+  background: none;
+  font-size: 1.1em;
+  margin: 0 2px;
+  border-radius: 6px;
+  border: none;
+  transition: background 0.2s;
+}
+
+.react-calendar__navigation button:enabled:hover,
+.react-calendar__navigation button:enabled:focus {
+  background: #e0e7ff;
+}
+
+/* Days grid */
+.react-calendar__month-view__days__day {
+  color: #334155;
+  background: none;
+  border-radius: 6px;
+  border: none;
+  transition: background 0.2s, color 0.2s;
+}
+
+.react-calendar__tile:enabled:hover,
+.react-calendar__tile:enabled:focus {
+  background: #dbeafe;
+  color: #1e293b;
+}
+
+.react-calendar__tile--active {
+  background: #2563eb;
+  color: #fff;
+}
+
+/* Make selected weekend date text white for contrast on blue background */
+.react-calendar__tile--active.react-calendar__month-view__days__day--weekend {
+  color: #fff !important;
+}
+
+.react-calendar__tile--now {
+  background: #facc15;
+  color: #1e293b;
+}
+
+.react-calendar__month-view__days__day--neighboringMonth {
+  color: #cbd5e1;
+}
+
+/* Weekends */
+.react-calendar__month-view__days__day--weekend {
+  color: #64748b;
+}
+
+/* Remove red from weekends */
+.react-calendar__month-view__days__day--weekend.react-calendar__month-view__days__day--neighboringMonth {
+  color: #e5e7eb;
+}
