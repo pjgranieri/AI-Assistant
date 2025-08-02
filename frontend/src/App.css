@@ -372,6 +372,229 @@ main {
   box-shadow: 0 6px 16px rgba(66, 133, 244, 0.4);
 }
 
+/* AI Assistant Section */
+.ai-assistant-section {
+  background: #2d2d2d;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  padding: 1.5rem;
+  border: 1px solid #404040;
+  color: white;
+  width: 100%;
+  margin-bottom: 1.5rem;
+}
+
+.ai-assistant-section h2 {
+  margin-top: 0;
+  color: white;
+  font-size: 1.3rem;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.content-input {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.content-type-select {
+  background: #404040;
+  color: white;
+  border: 1px solid #555;
+  border-radius: 6px;
+  padding: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.content-textarea {
+  background: #404040;
+  color: white;
+  border: 1px solid #555;
+  border-radius: 6px;
+  padding: 0.75rem;
+  font-size: 0.9rem;
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+}
+
+.content-textarea::placeholder {
+  color: #aaa;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.summarize-btn,
+.daily-brief-btn,
+.calendar-summary-btn {
+  background: #61dafb;
+  color: #000;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: 0.9rem;
+  flex: 1;
+  min-width: 100px;
+}
+
+.summarize-btn:hover,
+.daily-brief-btn:hover,
+.calendar-summary-btn:hover {
+  background: #4fa8c5;
+  transform: translateY(-2px);
+}
+
+.summarize-btn:disabled,
+.daily-brief-btn:disabled,
+.calendar-summary-btn:disabled {
+  background: #666;
+  color: #999;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.summary-result {
+  background: #1a1a1a;
+  border-radius: 8px;
+  padding: 1rem;
+  border: 1px solid #555;
+  margin-top: 1rem;
+}
+
+.summary-result h3 {
+  margin-top: 0;
+  color: #61dafb;
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+}
+
+.summary-content,
+.suggestions-content {
+  margin-bottom: 1rem;
+}
+
+.summary-content h4,
+.suggestions-content h4 {
+  color: #e0e0e0;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
+.summary-content p,
+.suggestions-content p {
+  line-height: 1.5;
+  color: #ccc;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+/* Calendar Settings */
+.calendar-settings-section {
+  background: #2d2d2d;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  padding: 1.5rem;
+  border: 1px solid #404040;
+  color: white;
+  width: 100%;
+  margin-bottom: 1.5rem;
+}
+
+.settings-toggle-btn {
+  background: #4a5568;
+  color: white;
+  border: none;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  width: 100%;
+  transition: background-color 0.3s;
+}
+
+.settings-toggle-btn:hover {
+  background: #2d3748;
+}
+
+.settings-panel {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #404040;
+}
+
+.settings-panel h3 {
+  margin-top: 0;
+  color: white;
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+}
+
+.setting-group {
+  margin-bottom: 1rem;
+}
+
+.setting-group label {
+  display: block;
+  color: #e0e0e0;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.timezone-select {
+  background: #404040;
+  color: white;
+  border: 1px solid #555;
+  border-radius: 6px;
+  padding: 0.5rem;
+  font-size: 1rem;
+  width: 100%;
+}
+
+.timezone-select:focus {
+  outline: none;
+  border-color: #61dafb;
+}
+
+.setting-group input[type="checkbox"] {
+  margin-right: 0.5rem;
+  transform: scale(1.2);
+}
+
+.clear-calendar-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  width: 100%;
+  transition: background-color 0.3s;
+}
+
+.clear-calendar-btn:hover {
+  background: #c82333;
+}
+
+/* Update existing time display classes for 24h support */
+.time-display-12h {
+  /* 12-hour format styling */
+}
+
+.time-display-24h {
+  /* 24-hour format styling */
+}
+
 /* Responsive breakpoints */
 @media (max-width: 768px) {
   .app-header {

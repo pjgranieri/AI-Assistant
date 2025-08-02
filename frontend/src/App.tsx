@@ -88,7 +88,13 @@ function App() {
     )
   }
 
-  // Show main app if authenticated
+  // Get current page title
+  const getPageTitle = () => {
+    if (location.pathname === '/about') return 'About'
+    return 'Calendar'
+  }
+
+  // Show main app if authenticated - FIXED STRUCTURE
   return (
     <div className="App">
       <header className="app-header">
@@ -101,24 +107,22 @@ function App() {
         </div>
       </header>
       
-      <div className="nav-bar">
-        <nav>
+      <main>
+        <div className="nav-links">
           <Link to="/" className={location.pathname === '/' ? 'active' : ''}>
             Calendar
           </Link>
           <Link to="/about" className={location.pathname === '/about' ? 'active' : ''}>
             About
           </Link>
-        </nav>
-      </div>
-      
-      <main>
-        <div className="calendar-container">
-          <Routes>
-            <Route path="/" element={<SimpleCalendar />} />
-            <Route path="/about" element={<About />} />
-          </Routes>
         </div>
+        
+        <h1 className="page-title">{getPageTitle()}</h1>
+        
+        <Routes>
+          <Route path="/" element={<SimpleCalendar />} />
+          <Route path="/about" element={<About />} />
+        </Routes>
       </main>
     </div>
   )
