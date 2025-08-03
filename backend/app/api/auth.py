@@ -36,13 +36,14 @@ class UserInfo(BaseModel):
     email: str
     name: str
 
-@router.get("/auth/google")
+@router.get("/google")
 async def google_auth(request: Request):
     """Initiate Google OAuth2 flow"""
-    redirect_uri = request.url_for('google_callback')
+    # Use the exact redirect URI that's configured in Google Console
+    redirect_uri = "http://localhost:8000/auth/callback"
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
-@router.get("/auth/google/callback")
+@router.get("/callback")
 async def google_callback(request: Request, db: Session = Depends(get_db)):
     """Handle Google OAuth2 callback"""
     try:
@@ -77,12 +78,14 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
         
         # Redirect to frontend with user data - UPDATE PORT HERE
         frontend_redirect_url = f"http://localhost:5174/?user_id={user_info['sub']}&email={user_info['email']}"
+        # OR if using Vite:
+        # frontend_redirect_url = f"http://localhost:5173/?user_id={user_info['sub']}&email={user_info['email']}"
         return RedirectResponse(url=frontend_redirect_url)
         
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Authentication failed: {str(e)}")
 
-@router.get("/auth/user/{user_id}", response_model=UserInfo)
+@router.get("/user/{user_id}", response_model=UserInfo)
 def get_user_info(user_id: str, db: Session = Depends(get_db)):
     """Get user information"""
     user_token = db.query(UserToken).filter(UserToken.user_id == user_id).first()
@@ -95,7 +98,7 @@ def get_user_info(user_id: str, db: Session = Depends(get_db)):
         "name": ""  # You can store name separately if needed
     }
 
-@router.delete("/auth/logout/{user_id}")
+@router.delete("/logout/{user_id}")
 def logout_user(user_id: str, db: Session = Depends(get_db)):
     """Logout user by removing tokens"""
     user_token = db.query(UserToken).filter(UserToken.user_id == user_id).first()
@@ -104,7 +107,7 @@ def logout_user(user_id: str, db: Session = Depends(get_db)):
         db.commit()
     return {"message": "Successfully logged out"}
 
-@router.get("/auth/token/{user_id}")
+@router.get("/token/{user_id}")
 def get_user_token(user_id: str, db: Session = Depends(get_db)):
     """Get user's access token (for internal use)"""
     user_token = db.query(UserToken).filter(UserToken.user_id == user_id).first()
