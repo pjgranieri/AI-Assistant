@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Routes, Route, Link, useLocation } from 'react-router-dom'
 import './App.css'
 import SimpleCalendar from './components/Calendar'
+import EmailDashboard from './components/EmailDashboard'
 
 function App() {
   const [user, setUser] = useState(null)
@@ -91,6 +92,7 @@ function App() {
   // Get current page title
   const getPageTitle = () => {
     if (location.pathname === '/about') return 'About'
+    if (location.pathname === '/emails') return 'Emails'
     return 'Calendar'
   }
 
@@ -112,6 +114,9 @@ function App() {
           <Link to="/" className={location.pathname === '/' ? 'active' : ''}>
             Calendar
           </Link>
+          <Link to="/emails" className={location.pathname === '/emails' ? 'active' : ''}>
+            Emails
+          </Link>
           <Link to="/about" className={location.pathname === '/about' ? 'active' : ''}>
             About
           </Link>
@@ -121,6 +126,7 @@ function App() {
         
         <Routes>
           <Route path="/" element={<SimpleCalendar />} />
+          <Route path="/emails" element={<EmailDashboard />} />
           <Route path="/about" element={<About />} />
         </Routes>
       </main>
