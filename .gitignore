@@ -205,3 +205,19 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Environment files
+.env
+.env.local
+.env.production
+.env.development
+
+# Google OAuth secrets
+**/secrets/
+**/*client_secret*.json
+**/*service-account*.json
+
+# API keys and tokens
+*.key
+*.pem
+*.p12

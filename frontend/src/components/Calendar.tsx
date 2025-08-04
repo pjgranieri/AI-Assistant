@@ -2,12 +2,19 @@ import { useState, useEffect } from 'react'
 import Calendar from 'react-calendar'
 import 'react-calendar/dist/Calendar.css'
 import './CalendarCustom.css'
+import AIAssistant from './AIAssistant'
+import CalendarSettings from './CalendarSettings'
 
 interface Event {
   id: number
   title: string
   description?: string
   datetime: string // ISO string with time
+}
+
+interface CalendarSettingsType {
+  timezone: string
+  use24h: boolean
 }
 
 export default function SimpleCalendar() {
@@ -18,6 +25,10 @@ export default function SimpleCalendar() {
   const [time, setTime] = useState('12:00')
   const [editingEvent, setEditingEvent] = useState<Event | null>(null)
   const [dayViewDate, setDayViewDate] = useState<Date | null>(null)
+  const [calendarSettings, setCalendarSettings] = useState<CalendarSettingsType>({
+    timezone: 'US/Eastern',
+    use24h: false
+  })
 
   // Fetch events from backend
   useEffect(() => {
@@ -62,19 +73,37 @@ export default function SimpleCalendar() {
         )
       })
 
-  // Handle event creation or editing
+  // FIXED: Handle event creation - keep time in local timezone
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    
     // Use dayViewDate if set, otherwise use date
     const eventDate = dayViewDate ? dayViewDate : (Array.isArray(date) ? date[0] : date)
+    
+    // Parse the time input (HH:MM format)
     const [hours, minutes] = time.split(':').map(Number)
-    const eventDateTime = new Date(eventDate)
-    eventDateTime.setHours(hours, minutes, 0, 0)
+    
+    // Create the datetime string in the format the backend expects
+    // Format: YYYY-MM-DDTHH:mm:ss (without timezone conversion)
+    const year = eventDate.getFullYear()
+    const month = String(eventDate.getMonth() + 1).padStart(2, '0')
+    const day = String(eventDate.getDate()).padStart(2, '0')
+    const hourStr = String(hours).padStart(2, '0')
+    const minuteStr = String(minutes).padStart(2, '0')
+    
+    // Create ISO string but treat it as local time (no UTC conversion)
+    const localDateTimeString = `${year}-${month}-${day}T${hourStr}:${minuteStr}:00`
+    
+    console.log('Selected date:', eventDate.toDateString())
+    console.log('Selected time:', time)
+    console.log('Local datetime string being sent:', localDateTimeString)
+    
     const payload = {
       title,
       description,
-      datetime: eventDateTime.toISOString(),
+      datetime: localDateTimeString, // Send as local time string
     }
+    
     if (editingEvent) {
       // Edit event
       const res = await fetch(`http://localhost:8000/events/${editingEvent.id}`, {
@@ -103,13 +132,41 @@ export default function SimpleCalendar() {
     setTime('12:00')
   }
 
-  // Start editing an event
+  // FIXED: Start editing an event - extract local time properly
   function startEdit(ev: Event) {
     setEditingEvent(ev)
     setTitle(ev.title)
     setDescription(ev.description || '')
-    setTime(new Date(ev.datetime).toTimeString().slice(0, 5))
-    setDate(new Date(ev.datetime))
+    
+    // Parse the datetime string directly (don't convert to Date object)
+    const datetimeStr = ev.datetime
+    let timeString = '12:00'
+    
+    if (datetimeStr.includes('T')) {
+      // Extract time portion from ISO string
+      const timePart = datetimeStr.split('T')[1]
+      if (timePart) {
+        timeString = timePart.substring(0, 5) // Get HH:mm part
+      }
+    } else {
+      // Fallback: convert to date and extract time
+      const eventDate = new Date(ev.datetime)
+      timeString = eventDate.toLocaleTimeString('en-US', { 
+        hour12: false, 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      })
+    }
+    
+    setTime(timeString)
+    
+    // Set the date for the calendar
+    const eventDate = new Date(ev.datetime)
+    setDate(eventDate)
+    
+    console.log('Editing event:', ev.title)
+    console.log('Original datetime:', ev.datetime)
+    console.log('Extracted time:', timeString)
   }
 
   // Cancel editing
@@ -126,109 +183,153 @@ export default function SimpleCalendar() {
     }
   }
 
+  // Helper function to format event time for display based on settings
+  function formatEventTime(datetimeString: string) {
+    const eventDate = new Date(datetimeString)
+    return eventDate.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: !calendarSettings.use24h 
+    })
+  }
+
+  // Handle settings changes
+  function handleSettingsChange(newSettings: CalendarSettingsType) {
+    setCalendarSettings(newSettings)
+    console.log('Settings updated:', newSettings)
+  }
+
   return (
-    <div>
-      <h2>Calendar</h2>
-      <div style={{ maxWidth: 350, margin: '0 auto' }}>
-        <Calendar
-          onChange={setDate}
-          value={date}
-          tileContent={tileContent}
-          onClickDay={handleDayClick}
-        />
-      </div>
-      <p>
-        Selected date:{' '}
-        {Array.isArray(date)
-          ? date.map(d => d.toDateString()).join(', ')
-          : (date as Date).toDateString()}
-      </p>
-      <ul>
-        {selectedEvents.map(ev => (
-          <li key={ev.id}>
-            <strong>{ev.title}</strong>
-            {ev.description && <>: {ev.description}</>}
-            <button style={{ marginLeft: 8 }} onClick={() => startEdit(ev)}>
-              Edit
-            </button>
-            <button
-              style={{ marginLeft: 8, color: 'red' }}
-              onClick={async () => {
-                await fetch(`http://localhost:8000/events/${ev.id}`, { method: 'DELETE' })
-                fetchEvents()
-              }}
-            >
-              Delete
-            </button>
-          </li>
-        ))}
-      </ul>
-      <form onSubmit={handleSubmit} style={{ marginTop: 16 }}>
-        <h3>{editingEvent ? 'Edit Event' : 'Add Event'}</h3>
-        <input
-          type="text"
-          placeholder="Title"
-          value={title}
-          required
-          onChange={e => setTitle(e.target.value)}
-        />
-        <input
-          type="text"
-          placeholder="Description"
-          value={description}
-          onChange={e => setDescription(e.target.value)}
-        />
-        <input
-          type="time"
-          value={time}
-          required
-          onChange={e => setTime(e.target.value)}
-        />
-        <button type="submit">{editingEvent ? 'Update' : 'Add'}</button>
-        {editingEvent && (
-          <button type="button" onClick={cancelEdit} style={{ marginLeft: 8 }}>
-            Cancel
-          </button>
-        )}
-      </form>
-      {dayViewDate && (
-        <div style={{ maxHeight: 400, overflowY: 'auto', border: '1px solid #e5e7eb', marginTop: 16, padding: 8 }}>
-          <h3>
-            Events for {dayViewDate.toDateString()}
-            <button style={{ marginLeft: 8 }} onClick={() => setDayViewDate(null)}>Close</button>
-          </h3>
-          <ul style={{ listStyle: 'none', padding: 0 }}>
-            {Array.from({ length: 24 }).map((_, hour) => {
-              const blockTime = new Date(dayViewDate)
-              blockTime.setHours(hour, 0, 0, 0)
-              const blockEvents = events.filter(ev => {
-                const evDate = new Date(ev.datetime)
-                return (
-                  evDate.getFullYear() === dayViewDate.getFullYear() &&
-                  evDate.getMonth() === dayViewDate.getMonth() &&
-                  evDate.getDate() === dayViewDate.getDate() &&
-                  evDate.getHours() === hour
-                )
-              })
-              return (
-                <li key={hour} style={{ borderBottom: '1px solid #e5e7eb', padding: '4px 0' }}>
-                  <strong>{blockTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong>
-                  {blockEvents.length > 0 ? (
-                    blockEvents.map(ev => (
-                      <div key={ev.id}>
-                        <span>{ev.title}</span>
-                        {ev.description && <>: {ev.description}</>}
-                      </div>
-                    ))
-                  ) : (
-                    <span style={{ color: '#cbd5e1', marginLeft: 8 }}>No events</span>
-                  )}
-                </li>
-              )
-            })}
-          </ul>
+    <div className="calendar-container">
+      <div className="calendar-section">
+        <h2>Calendar</h2>
+        <div style={{ maxWidth: 350, margin: '0 auto' }}>
+          <Calendar
+            onChange={setDate}
+            value={date}
+            tileContent={tileContent}
+            onClickDay={handleDayClick}
+          />
         </div>
-      )}
+        <p>
+          Selected date:{' '}
+          {Array.isArray(date)
+            ? date.map(d => d.toDateString()).join(', ')
+            : (date as Date).toDateString()}
+        </p>
+        <p style={{ fontSize: '0.9rem', color: '#ccc' }}>
+          Timezone: {calendarSettings.timezone} | 
+          Format: {calendarSettings.use24h ? '24-hour' : '12-hour'}
+        </p>
+        <ul>
+          {selectedEvents.map(ev => (
+            <li key={ev.id}>
+              <strong>{ev.title}</strong> at {formatEventTime(ev.datetime)}
+              {ev.description && <>: {ev.description}</>}
+              <button style={{ marginLeft: 8 }} onClick={() => startEdit(ev)}>
+                Edit
+              </button>
+              <button
+                style={{ marginLeft: 8, color: 'red' }}
+                onClick={async () => {
+                  await fetch(`http://localhost:8000/events/${ev.id}`, { method: 'DELETE' })
+                  fetchEvents()
+                }}
+              >
+                Delete
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+      
+      <div className="events-section">
+        <CalendarSettings onSettingsChange={handleSettingsChange} />
+        <AIAssistant />
+        <div className="add-event-section">
+          <form onSubmit={handleSubmit} style={{ marginTop: 16 }}>
+            <h3>{editingEvent ? 'Edit Event' : 'Add Event'}</h3>
+            <input
+              type="text"
+              placeholder="Title"
+              value={title}
+              required
+              onChange={e => setTitle(e.target.value)}
+              style={{ marginBottom: '0.5rem', padding: '0.5rem', width: '100%' }}
+            />
+            <input
+              type="text"
+              placeholder="Description"
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              style={{ marginBottom: '0.5rem', padding: '0.5rem', width: '100%' }}
+            />
+            <input
+              type="time"
+              value={time}
+              required
+              onChange={e => setTime(e.target.value)}
+              style={{ marginBottom: '0.5rem', padding: '0.5rem', width: '100%' }}
+            />
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+              <button type="submit" style={{ padding: '0.5rem 1rem' }}>
+                {editingEvent ? 'Update' : 'Add'}
+              </button>
+              {editingEvent && (
+                <button type="button" onClick={cancelEdit} style={{ padding: '0.5rem 1rem' }}>
+                  Cancel
+                </button>
+              )}
+            </div>
+          </form>
+        </div>
+        
+        <div className="daily-events-section">
+          {dayViewDate && (
+            <div style={{ maxHeight: 400, overflowY: 'auto', border: '1px solid #404040', marginTop: 16, padding: 8 }}>
+              <h3>
+                Events for {dayViewDate.toDateString()}
+                <button style={{ marginLeft: 8 }} onClick={() => setDayViewDate(null)}>Close</button>
+              </h3>
+              <ul style={{ listStyle: 'none', padding: 0 }}>
+                {Array.from({ length: 24 }).map((_, hour) => {
+                  const blockTime = new Date(dayViewDate)
+                  blockTime.setHours(hour, 0, 0, 0)
+                  const blockEvents = events.filter(ev => {
+                    const evDate = new Date(ev.datetime)
+                    return (
+                      evDate.getFullYear() === dayViewDate.getFullYear() &&
+                      evDate.getMonth() === dayViewDate.getMonth() &&
+                      evDate.getDate() === dayViewDate.getDate() &&
+                      evDate.getHours() === hour
+                    )
+                  })
+                  
+                  const timeFormat = calendarSettings.use24h 
+                    ? { hour: '2-digit', minute: '2-digit', hour12: false }
+                    : { hour: '2-digit', minute: '2-digit', hour12: true }
+                  
+                  return (
+                    <li key={hour} style={{ borderBottom: '1px solid #404040', padding: '4px 0' }}>
+                      <strong>{blockTime.toLocaleTimeString([], timeFormat as any)}</strong>
+                      {blockEvents.length > 0 ? (
+                        blockEvents.map(ev => (
+                          <div key={ev.id} style={{ marginLeft: '1rem', color: '#e0e0e0' }}>
+                            <span>{ev.title}</span>
+                            {ev.description && <>: {ev.description}</>}
+                          </div>
+                        ))
+                      ) : (
+                        <span style={{ color: '#666', marginLeft: 8 }}>No events</span>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
