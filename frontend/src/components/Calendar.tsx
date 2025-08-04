@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import Calendar from 'react-calendar'
 import 'react-calendar/dist/Calendar.css'
 import './CalendarCustom.css'
-import AIAssistant from './AIAssistant'
 import CalendarSettings from './CalendarSettings'
 
 interface Event {
@@ -205,7 +204,15 @@ export default function SimpleCalendar() {
         <h2>Calendar</h2>
         <div style={{ maxWidth: 350, margin: '0 auto' }}>
           <Calendar
-            onChange={setDate}
+            onChange={(value: Date | Date[] | null, event: React.MouseEvent<HTMLButtonElement>) => {
+              if (Array.isArray(value)) {
+                setDate([value[0], value[1]] as [Date, Date])
+              } else {
+                if (value) {
+                  setDate(value)
+                }
+              }
+            }}
             value={date}
             tileContent={tileContent}
             onClickDay={handleDayClick}
@@ -245,7 +252,6 @@ export default function SimpleCalendar() {
       
       <div className="events-section">
         <CalendarSettings onSettingsChange={handleSettingsChange} />
-        <AIAssistant />
         <div className="add-event-section">
           <form onSubmit={handleSubmit} style={{ marginTop: 16 }}>
             <h3>{editingEvent ? 'Edit Event' : 'Add Event'}</h3>

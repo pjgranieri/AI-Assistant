@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
+import './EmailDashboard.css'
 
-interface EmailSummary {
+interface Email {
   id: number
   subject: string
   sender: string
@@ -12,62 +13,102 @@ interface EmailSummary {
   received_at: string
 }
 
-interface EmailAnalytics {
-  categories: Array<{ category: string; count: number }>
-  priorities: Array<{ priority: string; count: number }>
-  sentiments: Array<{ sentiment: string; count: number }>
+interface Analytics {
+  period_days: number
+  categories: { category: string; count: number }[]
+  priorities: { priority: string; count: number }[]
+  sentiments: { sentiment: string; count: number }[]
 }
 
-export default function EmailDashboard() {
-  const [emails, setEmails] = useState<EmailSummary[]>([])
-  const [analytics, setAnalytics] = useState<EmailAnalytics | null>(null)
+const EmailDashboard: React.FC = () => {
+  console.log('EmailDashboard component rendering!') // Debug log
+  
+  const [emails, setEmails] = useState<Email[]>([])
+  const [analytics, setAnalytics] = useState<Analytics | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState<EmailSummary[]>([])
-  const [loading, setLoading] = useState(false)
+  const [searchResults, setSearchResults] = useState<Email[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState<'emails' | 'search' | 'analytics'>('emails')
+  const [error, setError] = useState<string | null>(null) // Add error state
+
+  const BASE_URL = 'http://localhost:8000'
+  
+  // Get user from localStorage or use test user
+  const getUser = () => {
+    const savedUser = localStorage.getItem('user')
+    if (savedUser) {
+      const user = JSON.parse(savedUser)
+      return user.id || user.user_id || 'test_user'
+    }
+    return 'test_user'
+  }
+  
+  const USER_ID = getUser()
+  console.log('Using USER_ID:', USER_ID) // Debug log
 
   useEffect(() => {
+    console.log('EmailDashboard useEffect running...') // Debug log
     loadEmails()
     loadAnalytics()
+    addTestData()
   }, [])
+
+  const addTestData = async () => {
+    try {
+      console.log('Adding test data...') // Debug log
+      const response = await fetch(`${BASE_URL}/api/emails/test-data`, { method: 'POST' })
+      console.log('Test data response:', response.status) // Debug log
+    } catch (error) {
+      console.error('Failed to add test data:', error)
+      setError('Failed to add test data')
+    }
+  }
 
   const loadEmails = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/emails?user_id=test_user&limit=20')
+      console.log('Loading emails...') // Debug log
+      const response = await fetch(`${BASE_URL}/api/emails?user_id=${USER_ID}&limit=20`)
+      console.log('Emails response:', response.status) // Debug log
       if (response.ok) {
         const data = await response.json()
+        console.log('Emails data:', data) // Debug log
         setEmails(data)
+      } else {
+        setError(`Failed to load emails: ${response.status}`)
       }
     } catch (error) {
       console.error('Failed to load emails:', error)
+      setError('Failed to load emails')
     }
   }
 
   const loadAnalytics = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/emails/analytics/test_user?days=30')
+      console.log('Loading analytics...') // Debug log
+      const response = await fetch(`${BASE_URL}/api/emails/analytics/${USER_ID}?days=30`)
+      console.log('Analytics response:', response.status) // Debug log
       if (response.ok) {
         const data = await response.json()
+        console.log('Analytics data:', data) // Debug log
         setAnalytics(data)
+      } else {
+        setError(`Failed to load analytics: ${response.status}`)
       }
     } catch (error) {
       console.error('Failed to load analytics:', error)
+      setError('Failed to load analytics')
     }
   }
 
   const searchEmails = async () => {
     if (!searchQuery.trim()) return
     
-    setLoading(true)
+    setIsLoading(true)
     try {
-      const response = await fetch('http://localhost:8000/api/emails/search?user_id=test_user', {
+      const response = await fetch(`${BASE_URL}/api/emails/search?user_id=${USER_ID}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query: searchQuery,
-          limit: 10
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: searchQuery, limit: 10 })
       })
       if (response.ok) {
         const data = await response.json()
@@ -76,161 +117,123 @@ export default function EmailDashboard() {
     } catch (error) {
       console.error('Search failed:', error)
     }
-    setLoading(false)
+    setIsLoading(false)
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
   }
 
   const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high': return '#ff4444'
-      case 'medium': return '#ffaa00'
-      case 'low': return '#44ff44'
-      default: return '#888'
+    switch (priority?.toLowerCase()) {
+      case 'high': return '#ff4757'
+      case 'medium': return '#ffa502'
+      case 'low': return '#2ed573'
+      default: return '#747d8c'
+    }
+  }
+
+  const getCategoryColor = (category: string) => {
+    switch (category?.toLowerCase()) {
+      case 'work': return '#3742fa'
+      case 'personal': return '#2f3542'
+      case 'promotional': return '#ff6348'
+      default: return '#747d8c'
+    }
+  }
+
+  const getSentimentEmoji = (sentiment: string) => {
+    switch (sentiment?.toLowerCase()) {
+      case 'positive': return '😊'
+      case 'negative': return '😟'
+      case 'neutral': return '😐'
+      default: return '❓'
     }
   }
 
   return (
-    <div style={{ padding: '20px', color: 'white' }}>
-      <h1>📧 Email Dashboard</h1>
-      
-      {/* Analytics Section */}
-      {analytics && (
-        <div style={{ marginBottom: '30px', display: 'flex', gap: '20px' }}>
-          <div style={{ background: '#333', padding: '15px', borderRadius: '8px', flex: 1 }}>
-            <h3>Categories</h3>
-            {analytics.categories.map(cat => (
-              <div key={cat.category} style={{ marginBottom: '5px' }}>
-                {cat.category}: {cat.count}
-              </div>
-            ))}
+    <div className="email-dashboard">
+      <div className="dashboard-header">
+        <h1>📧 Email Dashboard</h1>
+        {error && (
+          <div style={{ color: '#ff4757', padding: '10px', background: '#2d2d2d', borderRadius: '5px', marginBottom: '20px' }}>
+            Error: {error}
           </div>
-          <div style={{ background: '#333', padding: '15px', borderRadius: '8px', flex: 1 }}>
-            <h3>Priorities</h3>
-            {analytics.priorities.map(pri => (
-              <div key={pri.priority} style={{ marginBottom: '5px', color: getPriorityColor(pri.priority) }}>
-                {pri.priority}: {pri.count}
-              </div>
-            ))}
-          </div>
-          <div style={{ background: '#333', padding: '15px', borderRadius: '8px', flex: 1 }}>
-            <h3>Sentiments</h3>
-            {analytics.sentiments.map(sent => (
-              <div key={sent.sentiment} style={{ marginBottom: '5px' }}>
-                {sent.sentiment}: {sent.count}
-              </div>
-            ))}
-          </div>
+        )}
+        <div className="tab-navigation">
+          <button 
+            className={activeTab === 'emails' ? 'active' : ''}
+            onClick={() => setActiveTab('emails')}
+          >
+            📧 Emails ({emails.length})
+          </button>
+          <button 
+            className={activeTab === 'search' ? 'active' : ''}
+            onClick={() => setActiveTab('search')}
+          >
+            🔍 Search
+          </button>
+          <button 
+            className={activeTab === 'analytics' ? 'active' : ''}
+            onClick={() => setActiveTab('analytics')}
+          >
+            📊 Analytics
+          </button>
+        </div>
+      </div>
+
+      {/* Debug info */}
+      <div style={{ background: '#20232a', padding: '10px', borderRadius: '5px', marginBottom: '20px', fontSize: '14px' }}>
+        <p>USER_ID: {USER_ID}</p>
+        <p>Backend URL: {BASE_URL}</p>
+        <p>Emails loaded: {emails.length}</p>
+        <p>Active tab: {activeTab}</p>
+      </div>
+
+      {activeTab === 'emails' && (
+        <div className="emails-tab">
+          <h2>Recent Emails</h2>
+          {emails.length > 0 ? (
+            <div className="emails-list">
+              {emails.map((email) => (
+                <div key={email.id} className="email-card">
+                  <h3 className="email-subject">{email.subject}</h3>
+                  <p><strong>From:</strong> {email.sender}</p>
+                  <p className="email-summary">{email.summary}</p>
+                  <p><strong>Category:</strong> {email.category} | <strong>Priority:</strong> {email.priority}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p>No emails found. Check if backend is running and test data is loaded.</p>
+          )}
         </div>
       )}
 
-      {/* Search Section */}
-      <div style={{ marginBottom: '30px' }}>
-        <h2>🔍 Semantic Search</h2>
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search emails by meaning (e.g., 'urgent work tasks', 'social events')"
-            style={{ 
-              flex: 1, 
-              padding: '10px', 
-              background: '#444', 
-              color: 'white', 
-              border: '1px solid #666',
-              borderRadius: '4px'
-            }}
-            onKeyPress={(e) => e.key === 'Enter' && searchEmails()}
-          />
-          <button 
-            onClick={searchEmails} 
-            disabled={loading}
-            style={{ 
-              padding: '10px 20px', 
-              background: '#0066cc', 
-              color: 'white', 
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
-          >
-            {loading ? 'Searching...' : 'Search'}
-          </button>
+      {activeTab === 'search' && (
+        <div className="search-tab">
+          <h2>🔍 Search Emails</h2>
+          <p>Search functionality will be here</p>
         </div>
-        
-        {searchResults.length > 0 && (
-          <div>
-            <h3>Search Results:</h3>
-            {searchResults.map(email => (
-              <EmailCard key={`search-${email.id}`} email={email} />
-            ))}
-          </div>
-        )}
-      </div>
+      )}
 
-      {/* All Emails Section */}
-      <div>
-        <h2>📨 All Emails ({emails.length})</h2>
-        {emails.map(email => (
-          <EmailCard key={email.id} email={email} />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function EmailCard({ email }: { email: EmailSummary }) {
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high': return '#ff4444'
-      case 'medium': return '#ffaa00'
-      case 'low': return '#44ff44'
-      default: return '#888'
-    }
-  }
-
-  return (
-    <div style={{ 
-      background: '#333', 
-      margin: '10px 0', 
-      padding: '15px', 
-      borderRadius: '8px',
-      borderLeft: `4px solid ${getPriorityColor(email.priority)}`
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-        <div style={{ flex: 1 }}>
-          <h4 style={{ margin: '0 0 5px 0' }}>{email.subject}</h4>
-          <p style={{ margin: '0 0 10px 0', color: '#ccc', fontSize: '0.9em' }}>
-            From: {email.sender}
-          </p>
-          <p style={{ margin: '0 0 10px 0' }}>{email.summary}</p>
-          {email.action_items && email.action_items !== 'None' && (
-            <div style={{ background: '#444', padding: '8px', borderRadius: '4px', marginTop: '10px' }}>
-              <strong>Action Items:</strong>
-              <div style={{ marginTop: '5px' }}>{email.action_items}</div>
-            </div>
+      {activeTab === 'analytics' && (
+        <div className="analytics-tab">
+          <h2>📊 Analytics</h2>
+          {analytics ? (
+            <pre>{JSON.stringify(analytics, null, 2)}</pre>
+          ) : (
+            <p>No analytics data available</p>
           )}
         </div>
-        <div style={{ marginLeft: '15px', textAlign: 'right', fontSize: '0.8em' }}>
-          <div style={{ marginBottom: '5px' }}>
-            <span style={{ 
-              background: email.category === 'work' ? '#0066cc' : 
-                          email.category === 'personal' ? '#00cc66' : 
-                          email.category === 'promotional' ? '#cc6600' : '#666',
-              padding: '2px 8px',
-              borderRadius: '12px',
-              fontSize: '0.8em'
-            }}>
-              {email.category}
-            </span>
-          </div>
-          <div style={{ color: getPriorityColor(email.priority) }}>
-            {email.priority} priority
-          </div>
-          <div style={{ color: '#999', marginTop: '5px' }}>
-            {email.sentiment}
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   )
 }
+
+export default EmailDashboard
