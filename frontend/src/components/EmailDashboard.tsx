@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import GmailSync from './GmailSync'  // Add this import
+import CostMonitor from './CostMonitor'
 import './EmailDashboard.css'
 
 interface Email {
@@ -201,14 +202,24 @@ const EmailDashboard: React.FC = () => {
   }
 
   useEffect(() => {
-    console.log('EmailDashboard useEffect running...') // Debug log
+    console.log('EmailDashboard useEffect running...')
     const loadData = async () => {
-      await addTestData()
+      // First, load existing emails
       await loadEmails()
+      
+      // Only add test data if no emails exist
+      if (emails.length === 0) {
+        console.log('No emails found, adding test data...')
+        await addTestData()
+        await loadEmails() // Reload after adding test data
+      } else {
+        console.log(`Found ${emails.length} existing emails, skipping test data`)
+      }
+      
       await loadAnalytics()
     }
     loadData()
-  }, [])
+  }, []) // Remove emails dependency to prevent loops
 
   // Add event listener for email updates
   useEffect(() => {
@@ -222,7 +233,7 @@ const EmailDashboard: React.FC = () => {
 
   const addTestData = async () => {
     try {
-      console.log('Adding test data for user:', USER_ID) // Debug log
+      console.log('Checking if test data needed for user:', USER_ID)
       const response = await fetch(`${BASE_URL}/api/emails/test-data?user_id=${USER_ID}`, { 
         method: 'POST',
         headers: {
@@ -230,7 +241,7 @@ const EmailDashboard: React.FC = () => {
         }
       })
       const result = await response.json()
-      console.log('Test data response:', result) // Debug log
+      console.log('Test data response:', result)
     } catch (error) {
       console.error('Failed to add test data:', error)
       setError('Failed to add test data: ' + error.message)
@@ -635,6 +646,10 @@ const EmailDashboard: React.FC = () => {
       {activeTab === 'analytics' && (
         <div className="analytics-tab">
           <h2>📊 Analytics</h2>
+          
+          {/* Add Cost Monitor */}
+          <CostMonitor userId={USER_ID} />
+          
           {analytics ? (
             <div className="analytics-grid">
               <div className="analytics-card">

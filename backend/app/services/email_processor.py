@@ -12,9 +12,37 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 class EmailProcessor:
     def __init__(self):
-        self.llm = ChatOpenAI(api_key=OPENAI_API_KEY, model="gpt-3.5-turbo")
-        self.embeddings = OpenAIEmbeddings(api_key=OPENAI_API_KEY, model="text-embedding-ada-002")
-        self.openai_client = OpenAI(api_key=OPENAI_API_KEY)
+        self.llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)  # Use cheaper model
+        self.embeddings = OpenAIEmbeddings(model="text-embedding-3-small")  # Use smaller embedding model
+        self.processing_costs = {
+            "gpt-3.5-turbo": 0.0005,  # per 1K tokens
+            "text-embedding-3-small": 0.00002  # per 1K tokens
+        }
+    
+    def calculate_cost(self, text: str, operation: str) -> float:
+        """Estimate processing cost"""
+        token_count = len(text.split()) * 1.3  # Rough token estimation
+        if operation == "summary":
+            return (token_count / 1000) * self.processing_costs["gpt-3.5-turbo"]
+        elif operation == "embedding":
+            return (token_count / 1000) * self.processing_costs["text-embedding-3-small"]
+        return 0.0
+    
+    def needs_reprocessing(self, email_data: Dict[str, Any], existing_summary: Optional[EmailSummary]) -> bool:
+        """Check if email needs reprocessing"""
+        if not existing_summary:
+            return True
+        
+        # Only reprocess if content changed significantly
+        if existing_summary.content != email_data.get('content', ''):
+            return True
+            
+        # Don't reprocess if recently processed
+        if existing_summary.last_processed and \
+           existing_summary.last_processed > dt.datetime.utcnow() - dt.timedelta(days=7):
+            return False
+            
+        return False
     
     def generate_embedding(self, text: str) -> List[float]:
         """Generate embedding for text using OpenAI"""

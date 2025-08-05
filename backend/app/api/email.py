@@ -122,7 +122,18 @@ def test_endpoint():
 
 @router.post("/emails/test-data")
 def add_test_data(user_id: str = Query("test_user"), db: Session = Depends(get_db)):
-    """Add some test email data"""
+    """Add test data only if user has no emails"""
+    
+    # Check if user already has ANY emails
+    existing_count = db.query(EmailSummary).filter(EmailSummary.user_id == user_id).count()
+    if existing_count > 0:
+        return {
+            "message": f"User {user_id} already has {existing_count} emails. Skipping test data.",
+            "emails_added": 0,
+            "total_emails": existing_count
+        }
+    
+    # Only create test data if no emails exist
     test_emails = [
         EmailSummary(
             user_id=user_id,  # Use the provided user_id instead of hardcoded "test_user"
@@ -168,16 +179,55 @@ def add_test_data(user_id: str = Query("test_user"), db: Session = Depends(get_d
         )
     ]
     
-    for email in test_emails:
-        # Check if already exists for this user
+    emails_added = 0
+    for email_data in test_emails:
+        # Double-check each email doesn't exist
         existing = db.query(EmailSummary).filter(
-            EmailSummary.gmail_id == email.gmail_id,
-            EmailSummary.user_id == user_id
+            EmailSummary.gmail_id == email_data.gmail_id
         ).first()
+        
         if not existing:
-            db.add(email)
+            db.add(email_data)
+            emails_added += 1
     
     db.commit()
     
-    count = db.query(EmailSummary).filter(EmailSummary.user_id == user_id).count()
-    return {"message": f"Test data added. Total emails for {user_id}: {count}"}
+    total_count = db.query(EmailSummary).filter(EmailSummary.user_id == user_id).count()
+    return {
+        "message": f"Added {emails_added} test emails for {user_id}",
+        "emails_added": emails_added,
+        "total_emails": total_count
+    }
+
+@router.get("/emails/costs/{user_id}")
+def get_processing_costs(user_id: str, db: Session = Depends(get_db)):
+    """Get processing cost analytics for user"""
+    
+    # Get all emails for user
+    emails = db.query(EmailSummary).filter(EmailSummary.user_id == user_id).all()
+    
+    if not emails:
+        return {
+            "total_cost": 0.0,
+            "daily_cost": 0.0,
+            "email_count": 0,
+            "avg_cost_per_email": 0.0
+        }
+    
+    # Calculate costs (if you add processing_cost column)
+    total_cost = sum(getattr(email, 'processing_cost', 0.002) for email in emails)  # Default estimate
+    
+    # Calculate today's costs
+    today = dt.datetime.utcnow().date()
+    today_emails = [e for e in emails if e.created_at.date() == today]
+    daily_cost = sum(getattr(email, 'processing_cost', 0.002) for email in today_emails)
+    
+    avg_cost = total_cost / len(emails) if emails else 0
+    
+    return {
+        "total_cost": round(total_cost, 4),
+        "daily_cost": round(daily_cost, 4),
+        "email_count": len(emails),
+        "avg_cost_per_email": round(avg_cost, 4),
+        "processed_today": len(today_emails)
+    }
