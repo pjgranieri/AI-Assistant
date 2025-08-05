@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import GmailSync from './GmailSync'  // Add this import
 import './EmailDashboard.css'
 
 interface Email {
@@ -28,7 +29,7 @@ const EmailDashboard: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<Email[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState<'emails' | 'search' | 'analytics'>('emails')
+  const [activeTab, setActiveTab] = useState<'emails' | 'search' | 'analytics' | 'sync'>('emails')
   const [error, setError] = useState<string | null>(null) // Add error state
 
   const BASE_URL = 'http://localhost:8000'
@@ -48,57 +49,98 @@ const EmailDashboard: React.FC = () => {
 
   useEffect(() => {
     console.log('EmailDashboard useEffect running...') // Debug log
-    loadEmails()
-    loadAnalytics()
-    addTestData()
+    const loadData = async () => {
+      await addTestData()
+      await loadEmails()
+      await loadAnalytics()
+    }
+    loadData()
+  }, [])
+
+  // Add event listener for email updates
+  useEffect(() => {
+    const handleEmailsUpdated = () => {
+      loadEmails()  // Reload emails when sync completes
+    }
+
+    window.addEventListener('emailsUpdated', handleEmailsUpdated)
+    return () => window.removeEventListener('emailsUpdated', handleEmailsUpdated)
   }, [])
 
   const addTestData = async () => {
     try {
-      console.log('Adding test data...') // Debug log
+      console.log('Adding test data for user:', USER_ID) // Debug log
       const response = await fetch(`${BASE_URL}/api/emails/test-data?user_id=${USER_ID}`, { 
-        method: 'POST' 
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
       })
-      console.log('Test data response:', response.status) // Debug log
+      const result = await response.json()
+      console.log('Test data response:', result) // Debug log
     } catch (error) {
       console.error('Failed to add test data:', error)
-      setError('Failed to add test data')
+      setError('Failed to add test data: ' + error.message)
     }
   }
 
   const loadEmails = async () => {
     try {
-      console.log('Loading emails...') // Debug log
-      const response = await fetch(`${BASE_URL}/api/emails?user_id=${USER_ID}&limit=20`)
-      console.log('Emails response:', response.status) // Debug log
+      console.log('Loading emails for user:', USER_ID) // Debug log
+      const url = `${BASE_URL}/api/emails?user_id=${USER_ID}&limit=20`
+      console.log('Fetching URL:', url) // Debug log
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+      
+      console.log('Emails response status:', response.status) // Debug log
+      
       if (response.ok) {
         const data = await response.json()
-        console.log('Emails data:', data) // Debug log
+        console.log('Emails data received:', data) // Debug log
         setEmails(data)
       } else {
-        setError(`Failed to load emails: ${response.status}`)
+        const errorText = await response.text()
+        console.error('API Error:', response.status, errorText)
+        setError(`Failed to load emails: ${response.status} - ${errorText}`)
       }
     } catch (error) {
       console.error('Failed to load emails:', error)
-      setError('Failed to load emails')
+      setError('Failed to load emails: ' + error.message)
     }
   }
 
   const loadAnalytics = async () => {
     try {
-      console.log('Loading analytics...') // Debug log
-      const response = await fetch(`${BASE_URL}/api/emails/analytics/${USER_ID}?days=30`)
-      console.log('Analytics response:', response.status) // Debug log
+      console.log('Loading analytics for user:', USER_ID) // Debug log
+      const url = `${BASE_URL}/api/emails/analytics/${USER_ID}?days=30`
+      console.log('Fetching analytics URL:', url) // Debug log
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+      
+      console.log('Analytics response status:', response.status) // Debug log
+      
       if (response.ok) {
         const data = await response.json()
-        console.log('Analytics data:', data) // Debug log
+        console.log('Analytics data received:', data) // Debug log
         setAnalytics(data)
       } else {
-        setError(`Failed to load analytics: ${response.status}`)
+        const errorText = await response.text()
+        console.error('Analytics API Error:', response.status, errorText)
+        setError(`Failed to load analytics: ${response.status} - ${errorText}`)
       }
     } catch (error) {
       console.error('Failed to load analytics:', error)
-      setError('Failed to load analytics')
+      setError('Failed to load analytics: ' + error.message)
     }
   }
 
@@ -186,6 +228,12 @@ const EmailDashboard: React.FC = () => {
           >
             📊 Analytics
           </button>
+          <button 
+            className={activeTab === 'sync' ? 'active' : ''}
+            onClick={() => setActiveTab('sync')}
+          >
+            🔄 Gmail Sync
+          </button>
         </div>
       </div>
 
@@ -232,6 +280,13 @@ const EmailDashboard: React.FC = () => {
           ) : (
             <p>No analytics data available</p>
           )}
+        </div>
+      )}
+
+      {/* Add Gmail Sync tab */}
+      {activeTab === 'sync' && (
+        <div className="sync-tab">
+          <GmailSync userId={USER_ID} />
         </div>
       )}
     </div>
