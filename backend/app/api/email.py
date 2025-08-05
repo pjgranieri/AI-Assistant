@@ -121,12 +121,12 @@ def test_endpoint():
     return {"message": "Email API is working!"}
 
 @router.post("/emails/test-data")
-def add_test_data(db: Session = Depends(get_db)):
+def add_test_data(user_id: str = Query("test_user"), db: Session = Depends(get_db)):
     """Add some test email data"""
     test_emails = [
         EmailSummary(
-            user_id="test_user",
-            gmail_id="test_001",
+            user_id=user_id,  # Use the provided user_id instead of hardcoded "test_user"
+            gmail_id=f"{user_id}_001",  # Make gmail_id unique per user
             subject="Quarterly Report Due Tomorrow",
             sender="boss@company.com",
             recipient="you@company.com",
@@ -139,8 +139,8 @@ def add_test_data(db: Session = Depends(get_db)):
             received_at=dt.datetime.now()
         ),
         EmailSummary(
-            user_id="test_user",
-            gmail_id="test_002",
+            user_id=user_id,  # Use the provided user_id
+            gmail_id=f"{user_id}_002",  # Make gmail_id unique per user
             subject="Weekend Plans - BBQ at my place!",
             sender="friend@gmail.com",
             recipient="you@gmail.com",
@@ -153,8 +153,8 @@ def add_test_data(db: Session = Depends(get_db)):
             received_at=dt.datetime.now()
         ),
         EmailSummary(
-            user_id="test_user",
-            gmail_id="test_003",
+            user_id=user_id,  # Use the provided user_id
+            gmail_id=f"{user_id}_003",  # Make gmail_id unique per user
             subject="🎉 50% OFF Everything - Limited Time!",
             sender="noreply@store.com",
             recipient="you@gmail.com",
@@ -169,12 +169,15 @@ def add_test_data(db: Session = Depends(get_db)):
     ]
     
     for email in test_emails:
-        # Check if already exists
-        existing = db.query(EmailSummary).filter(EmailSummary.gmail_id == email.gmail_id).first()
+        # Check if already exists for this user
+        existing = db.query(EmailSummary).filter(
+            EmailSummary.gmail_id == email.gmail_id,
+            EmailSummary.user_id == user_id
+        ).first()
         if not existing:
             db.add(email)
     
     db.commit()
     
-    count = db.query(EmailSummary).filter(EmailSummary.user_id == "test_user").count()
-    return {"message": f"Test data added. Total emails for test_user: {count}"}
+    count = db.query(EmailSummary).filter(EmailSummary.user_id == user_id).count()
+    return {"message": f"Test data added. Total emails for {user_id}: {count}"}

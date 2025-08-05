@@ -56,7 +56,9 @@ const EmailDashboard: React.FC = () => {
   const addTestData = async () => {
     try {
       console.log('Adding test data...') // Debug log
-      const response = await fetch(`${BASE_URL}/api/emails/test-data`, { method: 'POST' })
+      const response = await fetch(`${BASE_URL}/api/emails/test-data?user_id=${USER_ID}`, { 
+        method: 'POST' 
+      })
       console.log('Test data response:', response.status) // Debug log
     } catch (error) {
       console.error('Failed to add test data:', error)
