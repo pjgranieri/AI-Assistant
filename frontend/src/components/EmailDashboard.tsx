@@ -46,6 +46,7 @@ const EmailDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'emails' | 'search' | 'analytics' | 'sync'>('emails')
   const [error, setError] = useState<string | null>(null)
+  const [isLoadingEmails, setIsLoadingEmails] = useState(true)
   
   // Sorting states
   const [sortBy, setSortBy] = useState<SortOption>('date')
@@ -206,8 +207,14 @@ const EmailDashboard: React.FC = () => {
     const loadData = async () => {
       // First, load existing emails
       await loadEmails()
-      
-      // Only add test data if no emails exist
+    }
+    loadData()
+  }, [])
+
+  // Separate useEffect to handle test data after emails are loaded
+  useEffect(() => {
+    const addTestDataIfNeeded = async () => {
+      // Only add test data if no emails exist and we've already tried to load emails
       if (emails.length === 0) {
         console.log('No emails found, adding test data...')
         await addTestData()
@@ -216,10 +223,15 @@ const EmailDashboard: React.FC = () => {
         console.log(`Found ${emails.length} existing emails, skipping test data`)
       }
       
+      // Load analytics after we have emails
       await loadAnalytics()
     }
-    loadData()
-  }, []) // Remove emails dependency to prevent loops
+    
+    // Only run this after the first load attempt
+    if (emails !== undefined) {
+      addTestDataIfNeeded()
+    }
+  }, [emails.length]) // This will trigger when emails.length changes
 
   // Add event listener for email updates
   useEffect(() => {
@@ -249,32 +261,23 @@ const EmailDashboard: React.FC = () => {
   }
 
   const loadEmails = async () => {
+    setIsLoadingEmails(true)
     try {
-      console.log('Loading emails for user:', USER_ID) // Debug log
-      const url = `${BASE_URL}/api/emails?user_id=${USER_ID}&limit=50`
-      console.log('Fetching URL:', url) // Debug log
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      })
-      
-      console.log('Emails response status:', response.status) // Debug log
-      
+      console.log('Loading emails for user:', USER_ID)
+      const response = await fetch(`${BASE_URL}/api/emails?user_id=${USER_ID}&limit=50`)
       if (response.ok) {
-        const data = await response.json()
-        console.log('Emails data received:', data) // Debug log
-        setEmails(data)
+        const emailData = await response.json()
+        console.log('Loaded emails:', emailData.length)
+        setEmails(emailData)
       } else {
-        const errorText = await response.text()
-        console.error('API Error:', response.status, errorText)
-        setError(`Failed to load emails: ${response.status} - ${errorText}`)
+        console.error('Failed to load emails:', response.status)
+        setError('Failed to load emails: ' + response.statusText)
       }
     } catch (error) {
-      console.error('Failed to load emails:', error)
-      setError('Failed to load emails: ' + error.message)
+      console.error('Error loading emails:', error)
+      setError('Error loading emails: ' + error.message)
+    } finally {
+      setIsLoadingEmails(false)
     }
   }
 
@@ -328,41 +331,32 @@ const EmailDashboard: React.FC = () => {
     setIsLoading(false)
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
-
   const getPriorityColor = (priority: string) => {
-    switch (priority?.toLowerCase()) {
-      case 'high': return '#ff4757'
-      case 'medium': return '#ffa502'
-      case 'low': return '#2ed573'
-      default: return '#747d8c'
+    switch (priority.toLowerCase()) {
+      case 'high': return '#e53e3e'
+      case 'medium': return '#ed8936'
+      case 'low': return '#48bb78'
+      default: return '#718096'
     }
   }
 
   const getCategoryColor = (category: string) => {
-    switch (category?.toLowerCase()) {
-      case 'work': return '#3742fa'
-      case 'personal': return '#2f3542'
-      case 'promotional': return '#ff6348'
-      case 'financial': return '#f39c12'
-      case 'travel': return '#9b59b6'
-      default: return '#747d8c'
+    switch (category.toLowerCase()) {
+      case 'work': return '#3182ce'
+      case 'personal': return '#805ad5'
+      case 'promotional': return '#ed64a6'
+      case 'financial': return '#38b2ac'
+      case 'travel': return '#f56500'
+      default: return '#718096'
     }
   }
 
   const getSentimentEmoji = (sentiment: string) => {
-    switch (sentiment?.toLowerCase()) {
+    switch (sentiment.toLowerCase()) {
       case 'positive': return '😊'
-      case 'negative': return '😟'
+      case 'negative': return '😔'
       case 'neutral': return '😐'
-      default: return '❓'
+      default: return '😐'
     }
   }
 
@@ -372,6 +366,16 @@ const EmailDashboard: React.FC = () => {
   }
 
   const dateLimits = getDateLimits()
+
+  // Add this function after your other helper functions (around line 280):
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
 
   return (
     <div className="email-dashboard">
@@ -520,7 +524,11 @@ const EmailDashboard: React.FC = () => {
             </div>
           </div>
 
-          {sortedEmails.length > 0 ? (
+          {isLoadingEmails ? (
+            <div className="loading-placeholder">
+              Loading emails...
+            </div>
+          ) : sortedEmails.length > 0 ? (
             <div className="emails-list">
               {sortedEmails.map((email) => (
                 <div key={email.id} className="email-card">
@@ -551,7 +559,7 @@ const EmailDashboard: React.FC = () => {
                   <h3 className="email-subject">{email.subject}</h3>
                   <p className="email-summary">{email.summary}</p>
                   
-                  {email.action_items && (
+                  {email.action_items && email.action_items !== 'None' && (
                     <div className="action-items">
                       <h4>📋 Action Items:</h4>
                       <pre>{email.action_items}</pre>
@@ -562,10 +570,33 @@ const EmailDashboard: React.FC = () => {
             </div>
           ) : (
             <div className="no-results">
-              {emails.length === 0 ? 
-                "No emails found. Check if backend is running and test data is loaded." :
-                "No emails match the current filters. Try adjusting your filters."
-              }
+              <div>
+                {emails.length === 0 ? (
+                  <>
+                    <h3>No emails found</h3>
+                    <p>Check if backend is running and test data is loaded.</p>
+                    <button 
+                      className="refresh-btn" 
+                      onClick={loadEmails}
+                      style={{ marginTop: '16px' }}
+                    >
+                      🔄 Try Again
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <h3>No emails match current filters</h3>
+                    <p>Try adjusting your filters or search terms.</p>
+                    <button 
+                      className="clear-filters-btn" 
+                      onClick={clearFilters}
+                      style={{ marginTop: '16px' }}
+                    >
+                      Clear All Filters
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -621,7 +652,7 @@ const EmailDashboard: React.FC = () => {
                     <h3 className="email-subject">{email.subject}</h3>
                     <p className="email-summary">{email.summary}</p>
                     
-                    {email.action_items && (
+                    {email.action_items && email.action_items !== 'None' && (
                       <div className="action-items">
                         <h4>📋 Action Items:</h4>
                         <pre>{email.action_items}</pre>

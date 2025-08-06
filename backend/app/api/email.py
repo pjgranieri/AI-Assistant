@@ -133,64 +133,74 @@ def add_test_data(user_id: str = Query("test_user"), db: Session = Depends(get_d
             "total_emails": existing_count
         }
     
-    # Only create test data if no emails exist
+    # Create test emails only if none exist
     test_emails = [
         EmailSummary(
-            user_id=user_id,  # Use the provided user_id instead of hardcoded "test_user"
-            gmail_id=f"{user_id}_001",  # Make gmail_id unique per user
-            subject="Quarterly Report Due Tomorrow",
-            sender="boss@company.com",
-            recipient="you@company.com",
-            content="Hi Team, Please remember that the quarterly report is due tomorrow...",
-            summary="Reminder about quarterly report deadline tomorrow at 5 PM with requirements for sales figures and budget analysis.",
+            user_id=user_id,
+            gmail_id="test_1",
+            subject="Team Meeting Tomorrow",
+            sender="manager@company.com",
+            recipient=f"{user_id}@company.com",
+            content="Hi team, we have our weekly standup tomorrow at 10 AM. Please prepare your updates.",
+            summary="Weekly team standup meeting scheduled for tomorrow at 10 AM. Team members should prepare their updates.",
             sentiment="neutral",
-            priority="high",
+            priority="medium",
             category="work",
-            action_items="• Complete quarterly report\n• Include sales figures\n• Add budget analysis",
-            received_at=dt.datetime.now()
+            action_items="Prepare updates for standup meeting",
+            received_at=dt.datetime.utcnow() - dt.timedelta(hours=2),
+            embedding=[0.1] * 1536  # Mock embedding
         ),
         EmailSummary(
-            user_id=user_id,  # Use the provided user_id
-            gmail_id=f"{user_id}_002",  # Make gmail_id unique per user
-            subject="Weekend Plans - BBQ at my place!",
-            sender="friend@gmail.com",
-            recipient="you@gmail.com",
-            content="Hey! Want to come over for a BBQ this Saturday?...",
-            summary="Invitation to BBQ this Saturday at 2 PM, asking to bring side dish or drinks.",
+            user_id=user_id,
+            gmail_id="test_2",
+            subject="Your Amazon order has shipped",
+            sender="ship-confirm@amazon.com",
+            recipient=f"{user_id}@gmail.com",
+            content="Your order #123-456789 has been shipped and will arrive by Friday.",
+            summary="Amazon order confirmation - package shipped, delivery expected Friday.",
             sentiment="positive",
             priority="low",
             category="personal",
-            action_items="• Decide if attending BBQ\n• Bring side dish or drinks",
-            received_at=dt.datetime.now()
+            action_items="Track package delivery",
+            received_at=dt.datetime.utcnow() - dt.timedelta(hours=5),
+            embedding=[0.2] * 1536  # Mock embedding
         ),
         EmailSummary(
-            user_id=user_id,  # Use the provided user_id
-            gmail_id=f"{user_id}_003",  # Make gmail_id unique per user
-            subject="🎉 50% OFF Everything - Limited Time!",
-            sender="noreply@store.com",
-            recipient="you@gmail.com",
-            content="FLASH SALE ALERT! Get 50% off everything...",
-            summary="Flash sale with 50% off everything using code FLASH50, ending at midnight.",
+            user_id=user_id,
+            gmail_id="test_3",
+            subject="Special offer: 50% off premium subscription",
+            sender="offers@service.com",
+            recipient=f"{user_id}@gmail.com",
+            content="Limited time offer! Upgrade to premium and save 50%. Offer expires in 48 hours.",
+            summary="Promotional email offering 50% discount on premium subscription. Limited time offer.",
             sentiment="neutral",
-            priority="low",
+            priority="medium",  # Promotional should be medium max
             category="promotional",
-            action_items="None",
-            received_at=dt.datetime.now()
+            action_items="Consider subscription upgrade before offer expires",
+            received_at=dt.datetime.utcnow() - dt.timedelta(hours=8),
+            embedding=[0.3] * 1536  # Mock embedding
         )
     ]
     
     emails_added = 0
     for email_data in test_emails:
-        # Double-check each email doesn't exist
-        existing = db.query(EmailSummary).filter(
-            EmailSummary.gmail_id == email_data.gmail_id
-        ).first()
-        
-        if not existing:
+        try:
             db.add(email_data)
             emails_added += 1
+        except Exception as e:
+            print(f"Error adding test email: {e}")
+            continue
     
-    db.commit()
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Error committing test data: {e}")
+        return {
+            "message": f"Failed to add test data: {str(e)}",
+            "emails_added": 0,
+            "total_emails": existing_count
+        }
     
     total_count = db.query(EmailSummary).filter(EmailSummary.user_id == user_id).count()
     return {
@@ -211,16 +221,32 @@ def get_processing_costs(user_id: str, db: Session = Depends(get_db)):
             "total_cost": 0.0,
             "daily_cost": 0.0,
             "email_count": 0,
-            "avg_cost_per_email": 0.0
+            "avg_cost_per_email": 0.0,
+            "processed_today": 0
         }
     
-    # Calculate costs (if you add processing_cost column)
-    total_cost = sum(getattr(email, 'processing_cost', 0.002) for email in emails)  # Default estimate
+    # Calculate costs (estimate if no processing_cost column yet)
+    total_cost = 0.0
+    for email in emails:
+        if hasattr(email, 'processing_cost') and email.processing_cost:
+            total_cost += email.processing_cost
+        else:
+            # Estimate cost based on content length
+            content_length = len(email.content or '') + len(email.subject or '')
+            estimated_cost = (content_length / 1000) * 0.002  # rough estimate
+            total_cost += estimated_cost
     
     # Calculate today's costs
     today = dt.datetime.utcnow().date()
     today_emails = [e for e in emails if e.created_at.date() == today]
-    daily_cost = sum(getattr(email, 'processing_cost', 0.002) for email in today_emails)
+    daily_cost = 0.0
+    for email in today_emails:
+        if hasattr(email, 'processing_cost') and email.processing_cost:
+            daily_cost += email.processing_cost
+        else:
+            content_length = len(email.content or '') + len(email.subject or '')
+            estimated_cost = (content_length / 1000) * 0.002
+            daily_cost += estimated_cost
     
     avg_cost = total_cost / len(emails) if emails else 0
     
