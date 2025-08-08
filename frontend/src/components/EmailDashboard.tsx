@@ -644,13 +644,26 @@ const EmailDashboard: React.FC = () => {
 
                     {/* Render event details if available */}
                     {eventDetails && (
+                      (eventDetails.title && eventDetails.title !== "Untitled") ||
+                      (eventDetails.datetime && eventDetails.datetime !== "N/A") ||
+                      (eventDetails.location && eventDetails.location !== "N/A")
+                    ) && (
                       <div>
-                        <strong>Event:</strong> {eventDetails.title || "Untitled"}
-                        <br />
-                        <strong>Date:</strong> {eventDetails.datetime || "N/A"}
-                        <br />
-                        <strong>Location:</strong> {eventDetails.location || "N/A"}
-                        {/* ...other fields... */}
+                        {eventDetails.title && eventDetails.title !== "Untitled" && (
+                          <div>
+                            <strong>Event:</strong> {eventDetails.title}
+                          </div>
+                        )}
+                        {eventDetails.datetime && eventDetails.datetime !== "N/A" && (
+                          <div>
+                            <strong>Date:</strong> {eventDetails.datetime}
+                          </div>
+                        )}
+                        {eventDetails.location && eventDetails.location !== "N/A" && (
+                          <div>
+                            <strong>Location:</strong> {eventDetails.location}
+                          </div>
+                        )}
                       </div>
                     )}
 
