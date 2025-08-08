@@ -204,10 +204,35 @@ const EmailDashboard: React.FC = () => {
 
   useEffect(() => {
     console.log('EmailDashboard useEffect running...')
-    const loadData = async () => {
-      // First, load existing emails
-      await loadEmails()
+    
+    // Check if user was auto-synced during OAuth
+    const urlParams = new URLSearchParams(window.location.search)
+    const autoSynced = urlParams.get('auto_synced')
+    const userIdFromUrl = urlParams.get('user_id')
+    const emailFromUrl = urlParams.get('email')
+    
+    // Store user info if provided
+    if (userIdFromUrl && emailFromUrl) {
+      localStorage.setItem('user', JSON.stringify({
+        id: userIdFromUrl,
+        user_id: userIdFromUrl,
+        email: emailFromUrl
+      }))
+      
+      // Clean URL
+      window.history.replaceState({}, document.title, window.location.pathname)
     }
+    
+    const loadData = async () => {
+      // Load existing emails
+      await loadEmails()
+      
+      // If auto-sync happened, show success message
+      if (autoSynced === 'true') {
+        setSyncStatus('✅ Gmail connected and recent emails synced automatically!')
+      }
+    }
+    
     loadData()
   }, [])
 
@@ -377,6 +402,9 @@ const EmailDashboard: React.FC = () => {
     })
   }
 
+  // Add state for sync status message
+  const [syncStatus, setSyncStatus] = useState<string>('')
+
   return (
     <div className="email-dashboard">
       <div className="dashboard-header">
@@ -384,6 +412,19 @@ const EmailDashboard: React.FC = () => {
         {error && (
           <div style={{ color: '#ff4757', padding: '10px', background: '#2d2d2d', borderRadius: '5px', marginBottom: '20px' }}>
             Error: {error}
+          </div>
+        )}
+        {/* Show sync status in the dashboard header */}
+        {syncStatus && (
+          <div style={{ 
+            color: '#48bb78', 
+            padding: '10px', 
+            background: '#1a202c', 
+            borderRadius: '5px', 
+            marginBottom: '20px',
+            border: '1px solid #48bb78'
+          }}>
+            {syncStatus}
           </div>
         )}
         <div className="tab-navigation">

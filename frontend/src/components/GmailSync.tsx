@@ -77,7 +77,7 @@ export default function GmailSync({ userId }: GmailSyncProps) {
       <div className="connection-status">
         <p>
           Status: {isConnected ? (
-            <span style={{ color: '#2ed573' }}>✅ Connected</span>
+            <span style={{ color: '#2ed573' }}>✅ Connected & Synced</span>
           ) : (
             <span style={{ color: '#ff4757' }}>❌ Not Connected</span>
           )}
@@ -92,25 +92,35 @@ export default function GmailSync({ userId }: GmailSyncProps) {
 
       <div className="sync-controls">
         {!isConnected ? (
-          <button 
-            onClick={handleConnectGmail}
-            className="connect-gmail-btn"
-            style={{
-              background: '#4285f4',
-              color: 'white',
-              border: 'none',
-              padding: '12px 24px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '16px',
-              marginBottom: '10px',
-              width: '100%'
-            }}
-          >
-            🔗 Connect Gmail
-          </button>
+          <div>
+            <button 
+              onClick={handleConnectGmail}
+              className="connect-gmail-btn"
+              style={{
+                background: '#4285f4',
+                color: 'white',
+                border: 'none',
+                padding: '12px 24px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '16px',
+                marginBottom: '10px',
+                width: '100%'
+              }}
+            >
+              🔗 Connect Gmail & Auto-Sync
+            </button>
+            <p style={{ fontSize: '0.8em', color: '#999', textAlign: 'center' }}>
+              This will authenticate and automatically sync your recent emails
+            </p>
+          </div>
         ) : (
           <div className="sync-options">
+            <p style={{ fontSize: '0.9em', color: '#ccc', marginBottom: '16px' }}>
+              💡 Your recent emails were automatically synced when you connected Gmail.
+              Use the buttons below to sync additional emails:
+            </p>
+            
             <button 
               onClick={() => handleGmailSync(1)}
               disabled={isLoading}
@@ -125,24 +135,9 @@ export default function GmailSync({ userId }: GmailSyncProps) {
                 opacity: isLoading ? 0.6 : 1
               }}
             >
-              Sync Last 24h
+              Sync More (Last 24h)
             </button>
-            <button 
-              onClick={() => handleGmailSync(7)}
-              disabled={isLoading}
-              style={{
-                background: '#27ae60',
-                color: 'white',
-                border: 'none',
-                padding: '8px 16px',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                margin: '5px',
-                opacity: isLoading ? 0.6 : 1
-              }}
-            >
-              Sync Last Week
-            </button>
+            
             <button 
               onClick={() => handleGmailSync(30)}
               disabled={isLoading}
@@ -157,26 +152,11 @@ export default function GmailSync({ userId }: GmailSyncProps) {
                 opacity: isLoading ? 0.6 : 1
               }}
             >
-              Sync Last Month
+              Sync More (Last Month)
             </button>
           </div>
         )}
       </div>
-
-      {isLoading && (
-        <div style={{ textAlign: 'center', padding: '20px' }}>
-          <div style={{ 
-            width: '20px', 
-            height: '20px', 
-            border: '2px solid #f3f3f3',
-            borderTop: '2px solid #3498db',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto'
-          }}></div>
-          <p style={{ marginTop: '10px', fontSize: '14px' }}>Processing emails...</p>
-        </div>
-      )}
     </div>
   )
 }

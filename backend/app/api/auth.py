@@ -53,8 +53,10 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
         if not user_info:
             raise HTTPException(status_code=400, detail="Failed to get user info")
         
+        user_id = user_info['sub']
+        
         # Store or update token in database
-        user_token = db.query(UserToken).filter(UserToken.user_id == user_info['sub']).first()
+        user_token = db.query(UserToken).filter(UserToken.user_id == user_id).first()
         
         if user_token:
             # Update existing token
@@ -65,7 +67,7 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
         else:
             # Create new token record
             user_token = UserToken(
-                user_id=user_info['sub'],
+                user_id=user_id,
                 email=user_info['email'],
                 access_token=token['access_token'],
                 refresh_token=token.get('refresh_token'),
@@ -76,10 +78,69 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(user_token)
         
-        # Redirect to frontend with user data - UPDATE PORT HERE
-        frontend_redirect_url = f"http://localhost:5174/?user_id={user_info['sub']}&email={user_info['email']}"
-        # OR if using Vite:
-        # frontend_redirect_url = f"http://localhost:5173/?user_id={user_info['sub']}&email={user_info['email']}"
+        # 🔥 NEW: Auto-sync emails after successful authentication
+        try:
+            print(f"Auto-syncing emails for newly authenticated user: {user_id}")
+            
+            from app.services.gmail_service import GmailService
+            from app.services.email_processor import EmailProcessor
+            from app.db.models.email_summary import EmailSummary
+            
+            gmail_service = GmailService(db, user_id)
+            email_processor = EmailProcessor()
+            
+            # Sync last 7 days of emails
+            gmail_emails = gmail_service.get_recent_emails(days=7)
+            processed_count = 0
+            
+            for email_data in gmail_emails[:10]:  # Limit to 10 emails for initial sync
+                # Check if email already exists
+                existing = db.query(EmailSummary).filter(
+                    EmailSummary.gmail_id == email_data['gmail_id'],
+                    EmailSummary.user_id == user_id
+                ).first()
+                
+                if existing:
+                    continue  # Skip if already exists
+                
+                try:
+                    print(f"Auto-processing: {email_data['subject']}")
+                    analysis = email_processor.process_email(email_data)
+                    
+                    email_summary = EmailSummary(
+                        user_id=user_id,
+                        gmail_id=email_data['gmail_id'],
+                        subject=email_data['subject'],
+                        sender=email_data['sender'],
+                        recipient=email_data['recipient'],
+                        content=email_data['content'],
+                        summary=analysis['summary'],
+                        embedding=analysis['embedding'],
+                        sentiment=analysis['sentiment'],
+                        priority=analysis['priority'],
+                        category=analysis['category'],
+                        action_items=analysis['action_items'],
+                        received_at=email_data['received_at'],
+                        processing_status="processed",
+                        processing_cost=0.002,  # Estimated cost
+                        last_processed=dt.datetime.utcnow()
+                    )
+                    db.add(email_summary)
+                    processed_count += 1
+                    
+                except Exception as e:
+                    print(f"Error auto-processing email: {e}")
+                    continue
+            
+            db.commit()
+            print(f"Auto-sync completed: {processed_count} emails processed")
+            
+        except Exception as e:
+            print(f"Auto-sync failed (non-critical): {e}")
+            # Don't fail the authentication if sync fails
+        
+        # Redirect to frontend with user data and sync status
+        frontend_redirect_url = f"http://localhost:5174/?user_id={user_id}&email={user_info['email']}&auto_synced=true"
         return RedirectResponse(url=frontend_redirect_url)
         
     except Exception as e:
