@@ -6,7 +6,7 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.api import email, event, auth, ai_assistant
+from app.api import email, event, auth, ai_assistant, gmail  # Add gmail import
 from app.deps import get_db
 
 app = FastAPI()
@@ -14,18 +14,19 @@ app = FastAPI()
 # Add SessionMiddleware with a simple secret key for development
 app.add_middleware(SessionMiddleware, secret_key="my-simple-secret-key-for-development")
 
-# Enable CORS - ADD PORT 3000 BACK
+# Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173", "http://localhost:5174"],
+    allow_origins=["http://localhost:5173", "http://localhost:5174"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include routers - FIXED ORDER AND PATHS
-app.include_router(auth.router, prefix="/auth", tags=["auth"])  # Auth routes FIRST
+# Include routers
+app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(email.router, prefix="/api", tags=["emails"])
+app.include_router(gmail.router, prefix="/api", tags=["gmail"])  # Add Gmail router
 app.include_router(event.router, tags=["events"])
 app.include_router(ai_assistant.router, prefix="/ai", tags=["ai"])
 

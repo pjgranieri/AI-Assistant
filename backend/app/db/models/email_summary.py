@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text
+from sqlalchemy import Column, Integer, String, DateTime, Text, Float
 from pgvector.sqlalchemy import Vector
 from app.db.base import Base
 import datetime as dt
@@ -23,3 +23,6 @@ class EmailSummary(Base):
     processed_at = Column(DateTime, default=dt.datetime.utcnow)
     created_at = Column(DateTime, default=dt.datetime.utcnow)
     updated_at = Column(DateTime, default=dt.datetime.utcnow, onupdate=dt.datetime.utcnow)
+    processing_status = Column(String, default="processed")  # processed, failed, pending
+    processing_cost = Column(Float, default=0.0)  # Track LLM costs
+    last_processed = Column(DateTime, default=dt.datetime.utcnow)

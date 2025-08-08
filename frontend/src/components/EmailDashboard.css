@@ -1,0 +1,558 @@
+/* Main dashboard container */
+.email-dashboard {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+  min-height: 100vh;
+}
+
+/* Tab content containers - prevent collapse but allow growth */
+.emails-tab,
+.search-tab,
+.analytics-tab,
+.sync-tab {
+  width: 100%;
+  min-height: 500px; /* Prevent collapse */
+}
+
+/* Main content area - dynamic width with minimum */
+.emails-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 300px; /* Prevent collapse when empty */
+  min-width: 600px; /* Minimum width */
+  max-width: 1200px; /* Maximum width */
+  margin: 0 auto; /* Center it */
+}
+
+/* Empty states - maintain minimum size */
+.no-results,
+.search-prompt {
+  text-align: center;
+  color: #a0aec0;
+  font-style: italic;
+  padding: 40px;
+  background: #2d3748;
+  border-radius: 8px;
+  margin: 20px 0;
+  border: 1px solid #4a5568;
+  min-height: 200px; /* Minimum height */
+  min-width: 600px; /* Same as emails-list minimum */
+  max-width: 1200px;
+  margin: 20px auto; /* Center it */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Controls section - dynamic but with minimums */
+.controls-section {
+  background: #2d3748;
+  border-radius: 12px;
+  padding: 24px;
+  margin: 24px auto; /* Center it */
+  border: 1px solid #4a5568;
+  min-width: 600px; /* Minimum width */
+  max-width: 1200px; /* Maximum width */
+}
+
+.controls-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #4a5568;
+}
+
+.controls-header h3 {
+  margin: 0;
+  color: #e2e8f0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.clear-filters-btn {
+  padding: 8px 16px;
+  background: #e53e3e;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.3s ease;
+}
+
+.clear-filters-btn:hover {
+  background: #c53030;
+}
+
+.controls-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.control-group label {
+  font-weight: 600;
+  color: #cbd5e0;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.sort-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.control-btn {
+  padding: 8px 16px;
+  background: #4a5568;
+  color: #e2e8f0;
+  border: 1px solid #718096;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.control-btn:hover {
+  background: #718096;
+  border-color: #a0aec0;
+}
+
+.control-btn.active {
+  background: #3182ce;
+  color: white;
+  border-color: #3182ce;
+  font-weight: 600;
+}
+
+.control-btn.active:hover {
+  background: #2c5aa0;
+  border-color: #2c5aa0;
+}
+
+.control-select {
+  padding: 10px 12px;
+  border: 1px solid #718096;
+  border-radius: 6px;
+  background: #4a5568;
+  color: #e2e8f0;
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.3s ease;
+}
+
+.control-select:focus {
+  border-color: #3182ce;
+  box-shadow: 0 0 0 2px rgba(49, 130, 206, 0.2);
+}
+
+.control-select option {
+  background: #4a5568;
+  color: #e2e8f0;
+}
+
+.date-range-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.control-date {
+  padding: 10px 12px;
+  border: 1px solid #718096;
+  border-radius: 6px;
+  background: #4a5568;
+  color: #e2e8f0;
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.3s ease;
+  flex: 1;
+  min-width: 140px;
+}
+
+.control-date:focus {
+  border-color: #3182ce;
+  box-shadow: 0 0 0 2px rgba(49, 130, 206, 0.2);
+}
+
+/* Custom date input styling for dark theme */
+.control-date::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
+
+.date-separator {
+  color: #a0aec0;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Email cards - back to original dynamic sizing */
+.email-card {
+  background: #2d3748;
+  border: 1px solid #4a5568;
+  border-radius: 12px;
+  padding: 20px;
+  transition: all 0.3s ease;
+  margin-bottom: 16px;
+}
+
+.email-card:hover {
+  border-color: #718096;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.email-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  gap: 16px;
+}
+
+.email-meta {
+  flex: 1;
+  min-width: 0; /* Allow text truncation */
+}
+
+.email-sender {
+  font-weight: 600;
+  color: #e2e8f0;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.email-date {
+  color: #a0aec0;
+  font-size: 13px;
+}
+
+.email-badges {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.priority-badge,
+.category-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: white;
+  min-width: 60px;
+  text-align: center;
+}
+
+.sentiment-badge {
+  font-size: 18px;
+  margin-left: 4px;
+}
+
+.email-subject {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 12px 0 8px 0;
+  color: #e2e8f0;
+  line-height: 1.4;
+}
+
+.email-summary {
+  color: #cbd5e0;
+  line-height: 1.5;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.action-items {
+  background: #1a202c;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 12px;
+  border-left: 3px solid #3182ce;
+}
+
+.action-items h4 {
+  margin: 0 0 8px 0;
+  color: #63b3ed;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.action-items pre {
+  color: #e2e8f0;
+  font-size: 13px;
+  line-height: 1.4;
+  margin: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: inherit;
+}
+
+/* Priority colors */
+.priority-high {
+  background: #e53e3e !important;
+}
+
+.priority-medium {
+  background: #ed8936 !important;
+}
+
+.priority-low {
+  background: #48bb78 !important;
+}
+
+/* Category colors */
+.category-work {
+  background: #3182ce !important;
+}
+
+.category-personal {
+  background: #805ad5 !important;
+}
+
+.category-promotional {
+  background: #ed64a6 !important;
+}
+
+.category-financial {
+  background: #38b2ac !important;
+}
+
+.category-travel {
+  background: #f56500 !important;
+}
+
+.category-other {
+  background: #718096 !important;
+}
+
+/* Responsive email cards */
+@media (max-width: 768px) {
+  .email-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  
+  .email-badges {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+  
+  .email-card {
+    padding: 16px;
+  }
+  
+  .email-subject {
+    font-size: 15px;
+  }
+  
+  .email-summary {
+    font-size: 13px;
+  }
+}
+
+/* Search results - same styling as emails */
+.search-results {
+  min-height: 300px;
+  min-width: 600px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Analytics grid - back to dynamic */
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 32px; /* Increased spacing */
+  margin-top: 32px;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.analytics-card {
+  background: #2d3748; /* Dark background like other cards */
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  border: 1px solid #4a5568;
+  min-height: 200px;
+}
+
+.analytics-card h3 {
+  margin: 0 0 20px 0;
+  color: #e2e8f0; /* Light text */
+  font-size: 18px;
+  font-weight: 600;
+  text-align: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #4a5568;
+}
+
+.analytics-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px; /* Space between items */
+}
+
+.analytics-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #1a202c; /* Darker background for items */
+  border-radius: 8px;
+  border: 1px solid #4a5568;
+  transition: background-color 0.3s ease;
+}
+
+.analytics-item:hover {
+  background: #2d3748;
+  border-color: #718096;
+}
+
+.analytics-label {
+  color: #cbd5e0; /* Light gray text */
+  font-weight: 500;
+  text-transform: capitalize;
+  flex: 1;
+}
+
+.analytics-count {
+  color: #63b3ed; /* Blue accent for numbers */
+  font-weight: 700;
+  font-size: 16px;
+  background: #1a365d;
+  padding: 4px 12px;
+  border-radius: 12px;
+  min-width: 40px;
+  text-align: center;
+}
+
+/* Add explanatory text for sentiments */
+.analytics-explanation {
+  background: #1a202c;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
+  border-left: 3px solid #3182ce;
+}
+
+.analytics-explanation h4 {
+  margin: 0 0 8px 0;
+  color: #63b3ed;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.analytics-explanation p {
+  margin: 0;
+  color: #cbd5e0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* Cost monitor styling to match */
+.cost-monitor {
+  background: #2d3748;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 32px;
+  border: 1px solid #4a5568;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.cost-monitor h3 {
+  margin: 0 0 20px 0;
+  color: #e2e8f0;
+  font-size: 18px;
+  font-weight: 600;
+  text-align: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #4a5568;
+}
+
+.cost-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+}
+
+.cost-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  background: #1a202c;
+  border-radius: 8px;
+  border: 1px solid #4a5568;
+  text-align: center;
+}
+
+.cost-label {
+  color: #a0aec0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.cost-value {
+  color: #48bb78;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* Responsive analytics */
+@media (max-width: 768px) {
+  .analytics-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    margin-top: 24px;
+  }
+  
+  .analytics-card {
+    padding: 20px;
+  }
+  
+  .analytics-item {
+    padding: 10px 12px;
+  }
+  
+  .analytics-count {
+    font-size: 14px;
+    padding: 3px 8px;
+    min-width: 35px;
+  }
+  
+  .cost-stats {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
