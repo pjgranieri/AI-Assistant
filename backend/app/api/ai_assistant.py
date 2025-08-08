@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy.dialects.postgresql import JSONB  # ensure available (Postgres)
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 from app.deps import get_db

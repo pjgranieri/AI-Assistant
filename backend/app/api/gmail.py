@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query, Depends
 from sqlalchemy.orm import Session
 from app.services.gmail_service import GmailService
-from app.services.email_processor import EmailProcessor
+from app.services.email_pipeline import process_email_with_agent
 from app.db.models.email_summary import EmailSummary
 from app.db.models.user_token import UserToken
 from app.deps import get_db
@@ -34,7 +34,6 @@ def sync_gmail_emails(
     try:
         # Initialize services
         gmail_service = GmailService(db, user_id)
-        email_processor = EmailProcessor()
         
         # Fetch recent emails from Gmail
         print(f"Fetching emails from last {days} days for user {user_id}")
@@ -56,9 +55,8 @@ def sync_gmail_emails(
             
             if existing and not force_reprocess:
                 # Check if needs reprocessing
-                if not email_processor.needs_reprocessing(email_data, existing):
-                    skipped_count += 1
-                    continue
+                skipped_count += 1
+                continue
             
             emails_to_process.append((email_data, existing))
         
@@ -71,51 +69,27 @@ def sync_gmail_emails(
                 try:
                     print(f"Processing: {email_data['subject']}")
                     
-                    # Calculate estimated cost
-                    estimated_cost = email_processor.calculate_cost(
-                        email_data['content'], "summary"
-                    ) + email_processor.calculate_cost(
-                        email_data['content'], "embedding"
+                    # Delete existing if reprocessing
+                    if existing:
+                        db.delete(existing)
+                        db.flush()
+                    
+                    # Process with agent (replaces email_processor.process_email)
+                    email_summary = process_email_with_agent(
+                        user_id=user_id,
+                        gmail_id=email_data['gmail_id'],
+                        subject=email_data['subject'],
+                        sender=email_data['sender'],
+                        recipient=email_data.get('recipient', ''),
+                        content=email_data['content'],
+                        received_at=email_data['received_at']
                     )
                     
-                    analysis = email_processor.process_email(email_data)
-                    
-                    if existing:
-                        # Update existing
-                        existing.summary = analysis['summary']
-                        existing.embedding = analysis['embedding']
-                        existing.sentiment = analysis['sentiment']
-                        existing.priority = analysis['priority']
-                        existing.category = analysis['category']
-                        existing.action_items = analysis['action_items']
-                        existing.processing_status = "processed"
-                        existing.processing_cost = estimated_cost
-                        existing.last_processed = dt.datetime.utcnow()
-                    else:
-                        # Create new
-                        email_summary = EmailSummary(
-                            user_id=user_id,
-                            gmail_id=email_data['gmail_id'],
-                            subject=email_data['subject'],
-                            sender=email_data['sender'],
-                            recipient=email_data['recipient'],
-                            content=email_data['content'],
-                            summary=analysis['summary'],
-                            embedding=analysis['embedding'],
-                            sentiment=analysis['sentiment'],
-                            priority=analysis['priority'],
-                            category=analysis['category'],
-                            action_items=analysis['action_items'],
-                            received_at=email_data['received_at'],
-                            processing_status="processed",
-                            processing_cost=estimated_cost,
-                            last_processed=dt.datetime.utcnow()
-                        )
-                        db.add(email_summary)
-                    
+                    db.add(email_summary)
                     processed_count += 1
-                    total_cost += estimated_cost
-                    
+                    agent_used = email_summary.tool_chain_used
+                    print(f"✅ Processed {'(agent)' if agent_used else '(fallback)'}")
+
                 except Exception as e:
                     print(f"Error processing email {email_data['subject']}: {e}")
                     continue

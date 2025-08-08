@@ -9,6 +9,7 @@ import datetime as dt
 
 router = APIRouter()
 
+# Add agent fields to EmailSummaryRead
 class EmailSummaryRead(BaseModel):
     id: int
     user_id: str
@@ -21,6 +22,12 @@ class EmailSummaryRead(BaseModel):
     category: Optional[str] = None
     action_items: Optional[str] = None
     received_at: dt.datetime
+    # Agent fields
+    primary_type: Optional[str] = None
+    urgency: Optional[str] = None
+    contains_event: Optional[bool] = None
+    contains_tasks: Optional[bool] = None
+    tool_chain_used: Optional[bool] = None
 
     model_config = {"from_attributes": True}
 
