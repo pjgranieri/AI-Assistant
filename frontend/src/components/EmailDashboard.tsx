@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import GmailSync from './GmailSync'  // Add this import
 import CostMonitor from './CostMonitor'
 import './EmailDashboard.css'
+import axios from "axios"; // Add this import if not present
 
 interface Email {
   id: number
@@ -642,38 +643,70 @@ const EmailDashboard: React.FC = () => {
                       </div>
                     )}
 
-                    {/* Render event details if available */}
-                    {eventDetails && (
-                      (eventDetails.title && eventDetails.title !== "Untitled") ||
-                      (eventDetails.datetime && eventDetails.datetime !== "N/A") ||
-                      (eventDetails.location && eventDetails.location !== "N/A")
-                    ) && (
-                      <div>
-                        {eventDetails.title && eventDetails.title !== "Untitled" && (
-                          <div>
-                            <strong>Event:</strong> {eventDetails.title}
-                          </div>
-                        )}
-                        {eventDetails.datetime && eventDetails.datetime !== "N/A" && (
-                          <div>
-                            <strong>Date:</strong> {eventDetails.datetime}
-                          </div>
-                        )}
-                        {eventDetails.location && eventDetails.location !== "N/A" && (
-                          <div>
-                            <strong>Location:</strong> {eventDetails.location}
-                          </div>
-                        )}
-                      </div>
+                    {/* Render event details if available and show suggested time */}
+                    {email.event_details && (
+                      (email.event_details.title || email.event_details.datetime || email.event_details.location) && (
+                        <div className="event-details">
+                          {email.event_details.title && (
+                            <div>
+                              <strong>Event:</strong> {email.event_details.title}
+                            </div>
+                          )}
+                          {email.event_details.datetime && (
+                            <div>
+                              <strong>Suggested Time:</strong> {formatDate(email.event_details.datetime)}
+                            </div>
+                          )}
+                          {email.event_details.location && (
+                            <div>
+                              <strong>Location:</strong> {email.event_details.location}
+                            </div>
+                          )}
+                        </div>
+                      )
                     )}
 
-                    {/* Render task details if available */}
-                    {taskDetails.length > 0 && (
+                    {/* Render task details with suggested times */}
+                    {email.task_details && email.task_details.tasks && email.task_details.tasks.length > 0 && (
                       <ul>
-                        {taskDetails.map((task, idx) => (
-                          <li key={idx}>{task.description || task.title || "Untitled Task"}</li>
+                        {email.task_details.tasks.map((task, idx) => (
+                          <li key={idx}>
+                            {task.description || task.title || "Untitled Task"}
+                            {task.due_date && (
+                              <>
+                                <span style={{ marginLeft: 8, color: "#3182ce" }}>
+                                  (Suggested: {formatDate(task.due_date)})
+                                </span>
+                                <button
+                                  style={{ marginLeft: 8 }}
+                                  onClick={() => handleAddToCalendar(task)}
+                                >
+                                  Add to Calendar
+                                </button>
+                              </>
+                            )}
+                          </li>
                         ))}
                       </ul>
+                    )}
+
+                    {/* Add event to AI Calendar button */}
+                    {email.event_details && email.event_details.datetime && (
+                      <button
+                        style={{ marginLeft: 8 }}
+                        onClick={() =>
+                          handleAddToAICalendar({
+                            userId: USER_ID,
+                            title: email.event_details.title || "Event",
+                            description: email.summary || "",
+                            start: email.event_details.datetime,
+                            end: email.event_details.end_datetime,
+                            location: email.event_details.location,
+                          })
+                        }
+                      >
+                        Add Event to AI Calendar
+                      </button>
                     )}
                   </div>
                 )
@@ -900,6 +933,48 @@ const EmailDashboard: React.FC = () => {
       )}
     </div>
   )
+}
+
+function formatDate(iso: string | null | undefined) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleString();
+}
+
+async function handleAddToAICalendar({
+  userId,
+  title,
+  description,
+  start,
+  end,
+  location,
+}: {
+  userId: string;
+  title: string;
+  description?: string;
+  start: string;
+  end?: string;
+  location?: string;
+}) {
+  try {
+    const res = await axios.post("http://localhost:8000/api/calendar/events", {
+      user_id: userId,
+      title,
+      description,
+      start,
+      end,
+      location,
+    });
+    if (res.data.success) {
+      alert("Event added to your AI Assistant Calendar!");
+      // Optionally: trigger a calendar refresh here
+    } else {
+      alert("Failed to add event to calendar.");
+    }
+  } catch (err) {
+    alert("Failed to add event to calendar.");
+  }
 }
 
 export default EmailDashboard
