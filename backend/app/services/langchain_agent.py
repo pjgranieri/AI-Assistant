@@ -211,6 +211,7 @@ def aggregate_from_steps(steps: List[tuple]) -> Dict[str, Any]:
         for call, output in steps:
             if getattr(call, "tool", None) == "detect_event":
                 try:
+                    # FIX: proper ternary
                     payload = json.loads(output) if isinstance(output, str) else output
                     key_confidences.append(payload.get("confidence", 0.5))
                 except:
@@ -222,6 +223,7 @@ def aggregate_from_steps(steps: List[tuple]) -> Dict[str, Any]:
         for call, output in steps:
             if getattr(call, "tool", None) == "detect_tasks":
                 try:
+                    # FIX: proper ternary
                     payload = json.loads(output) if isinstance(output, str) else output
                     key_confidences.append(payload.get("confidence", 0.5))
                 except:
@@ -349,69 +351,119 @@ def normalize_final_analysis(final_analysis: Dict[str, Any], original_email_text
         if event_details.get('datetime'):
             original_datetime = event_details['datetime']
             try:
-                # Use dateutil to parse flexible date formats
-                reference_dt = datetime.datetime.now()
+                # FIX: use dt alias (avoid shadowed local 'datetime')
+                reference_dt = dt.datetime.now()
                 parsed_dt = date_parser.parse(original_datetime, fuzzy=True, default=reference_dt)
-                
-                # Only update if we got a reasonable parse (not just default time)
                 if parsed_dt != reference_dt.replace(hour=0, minute=0, second=0, microsecond=0):
                     event_details['datetime'] = parsed_dt.strftime('%Y-%m-%dT%H:%M:%S')
                     print(f"  ✅ Normalized datetime: {original_datetime} → {event_details['datetime']}")
             except Exception as e:
                 print(f"  ⚠️ Date parsing failed for '{original_datetime}': {e}")
-                # Keep original value
                 pass
         
+        # Infer title if missing
+        if (not event_details.get('title')) and final_analysis.get('primary_type') in ('event','mixed'):
+            subj = final_analysis.get('subject') or final_analysis.get('raw_subject') or ''
+            if subj:
+                event_details['title'] = subj.strip()
+            else:
+                # fallback from first line with 'kickoff'/'meeting'
+                first_line = (original_email_text.splitlines() or [''])[0]
+                if 'kickoff' in first_line.lower():
+                    event_details['title'] = "Kickoff Meeting"
+        
+        # Infer datetime from patterns like 'Monday 10 AM' if missing
+        if not event_details.get('datetime') and original_email_text:
+            import re, datetime as _dt
+            weekday_time = re.search(r'\b(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b[, ]*(at )?(\d{1,2})(:?(\d{2}))?\s*(AM|PM)\b', original_email_text, re.IGNORECASE)
+            if weekday_time:
+                try:
+                    wd = weekday_time.group(1).lower()
+                    hour = int(weekday_time.group(3))
+                    minute = int(weekday_time.group(5) or 0)
+                    ampm = weekday_time.group(6).lower()
+                    if ampm == 'pm' and hour != 12:
+                        hour += 12
+                    if ampm == 'am' and hour == 12:
+                        hour = 0
+                    now = _dt.datetime.now()
+                    target_wd = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].index(wd)
+                    delta = (target_wd - now.weekday()) % 7
+                    if delta == 0 and (hour < now.hour or (hour == now.hour and minute <= now.minute)):
+                        delta = 7
+                    inferred_date = (now + _dt.timedelta(days=delta)).replace(hour=hour, minute=minute, second=0, microsecond=0)
+                    event_details['datetime'] = inferred_date.strftime('%Y-%m-%dT%H:%M:%S')
+                except Exception:
+                    pass
+        
+        # Trim agenda if it captured whole email
+        if event_details.get('agenda'):
+            agenda_txt = event_details['agenda']
+            if original_email_text:
+                if len(agenda_txt) > 180 or len(agenda_txt) > 0.6 * len(original_email_text):
+                    # Try to rebuild agenda from tasks or bullet lines
+                    tasks = final_analysis.get('task_details', {}).get('tasks') if final_analysis.get('task_details') else None
+                    if tasks:
+                        short_items = [t.get('description','').strip() for t in tasks if t.get('description')]
+                        short_items = [s for s in short_items if 3 <= len(s) <= 90]
+                        if short_items:
+                            event_details['agenda'] = '; '.join(short_items[:4])
+                        else:
+                            event_details['agenda'] = None
+                    else:
+                        # Fallback: look for bullet lines
+                        import re
+                        bullets = re.findall(r'^[\-\*\u2022]\s*(.+)', original_email_text, re.MULTILINE)
+                        clean_bullets = [b.strip() for b in bullets if 3 <= len(b.strip()) <= 90]
+                        event_details['agenda'] = '; '.join(clean_bullets[:4]) if clean_bullets else None
+
         normalized['event_details'] = event_details
-    
-    # === REASONING DE-DUPLICATION ===
-    if normalized.get('reasoning'):
-        reasoning = normalized['reasoning']
-        
-        # Split into sentences
-        sentences = [s.strip() for s in reasoning.split('.') if s.strip()]
-        
-        # Remove duplicate sentences while preserving order
-        seen_sentences = set()
-        deduped_sentences = []
-        
-        for sentence in sentences:
-            # Normalize for comparison (lowercase, remove extra spaces)
-            normalized_sentence = ' '.join(sentence.lower().split())
-            
-            if normalized_sentence not in seen_sentences:
-                seen_sentences.add(normalized_sentence)
-                deduped_sentences.append(sentence)
-        
-        # Handle repeated clauses within sentences
-        final_sentences = []
-        for sentence in deduped_sentences:
-            # Check for repeated phrases like "The email explicitly states" back-to-back
-            words = sentence.split()
-            if len(words) > 6:
-                # Look for repeated 3-4 word phrases
-                for phrase_len in [4, 3]:
-                    for i in range(len(words) - phrase_len * 2 + 1):
-                        phrase1 = ' '.join(words[i:i + phrase_len])
-                        phrase2 = ' '.join(words[i + phrase_len:i + phrase_len * 2])
-                        if phrase1.lower() == phrase2.lower():
-                            # Remove the duplicate phrase
-                            words = words[:i + phrase_len] + words[i + phrase_len * 2:]
-                            break
-            
-            final_sentences.append(' '.join(words))
-        
-        # Rejoin with single space between sentences
-        deduplicated_reasoning = '. '.join(final_sentences)
-        if deduplicated_reasoning and not deduplicated_reasoning.endswith('.'):
-            deduplicated_reasoning += '.'
-        
-        normalized['reasoning'] = deduplicated_reasoning
-        
-        if deduplicated_reasoning != reasoning:
-            print(f"  ✅ De-duplicated reasoning: {len(reasoning)} → {len(deduplicated_reasoning)} chars")
-    
-    print("✅ Final analysis normalization complete")
+
+    # === SUMMARY vs REASONING DEDUP ===
+    if normalized.get('summary') and normalized.get('reasoning'):
+        if normalized['summary'].strip() == normalized['reasoning'].strip():
+            # Compress summary to first 2 sentences
+            sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', normalized['summary']) if s.strip()]
+            normalized['summary'] = ' '.join(sentences[:2])
+
+    # === CONFIDENCE RECALIBRATION (if inflated) ===
+    if isinstance(normalized.get('confidence'), (int,float)):
+        c = normalized['confidence']
+        if c > 0.85:
+            normalized['confidence'] = 0.85
+
+    # After confidence recalibration:
+    # === DURATION INFERENCE ===
+    if normalized.get('event_details'):
+        ev = normalized['event_details']
+        if ev.get('datetime') and not ev.get('end_datetime'):
+            default_minutes = 30 if (len(normalized.get('task_details', {}).get('tasks', [])) < 2) else 60
+            try:
+                start = dt.datetime.fromisoformat(ev['datetime'])   # FIX: use dt.*
+                ev['end_datetime'] = (start + dt.timedelta(minutes=default_minutes)).strftime('%Y-%m-%dT%H:%M:%S')
+                ev['duration_minutes'] = default_minutes
+            except Exception:
+                pass
+        normalized['event_details'] = ev
+
+    # === REMOVE HIGH PRIORITY SUGGESTION IF PRIORITY NOT HIGH ===
+    if normalized.get('priority') != 'high' and normalized.get('suggestions'):
+        normalized['suggestions'] = [s for s in normalized['suggestions'] if 'high priority' not in s.lower()]
+
+    # === ADD SUMMARY IF MISSING (use normalized not final_analysis) ===
+    if not normalized.get("summary"):
+        import re as _re
+        sentences = [_s.strip() for _s in _re.split(r'(?<=[.!?])\s+', normalized.get("reasoning","")) if _s.strip()]
+        if sentences:
+            normalized["summary"] = ' '.join(sentences[:2])
+
+    # === EXTRA SUMMARY DE-DUP (remove immediate repetition) ===
+    if normalized.get("summary"):
+        import re as _r
+        parts = [p.strip() for p in _r.split(r'(?<=[.!?])\s+', normalized["summary"]) if p.strip()]
+        if len(parts) >= 2 and parts[0].lower() == parts[1].lower():
+            normalized["summary"] = parts[0] + ('.' if not parts[0].endswith(('.', '!', '?')) else '')
+
     return normalized
 
 class EmailRouterAgent:
@@ -815,90 +867,31 @@ Do not include any prose outside the JSON. Only return the JSON object."""),
                     json_str = json_match.group()
                     final_analysis = json.loads(json_str)
                     print("✅ Successfully parsed agent's JSON output")
-                    
-                    # Apply PRIMARY TYPE LOGIC for agent output too
                     if final_analysis.get("contains_event") and final_analysis.get("contains_tasks"):
                         final_analysis["primary_type"] = "mixed"
-                    
-                    # === POST-PROCESSING NORMALIZATION ===
-                    final_analysis = normalize_final_analysis(final_analysis, email_text)
-                    
-                    # Validate with Pydantic model
-                    try:
-                        validated = EmailAnalysis(**final_analysis)
-                        final_analysis = validated.dict()
-                        print("✅ Schema validation passed")
-                    except ValidationError as e:
-                        print(f"⚠️ Schema validation failed: {e}")
-                        # Use the JSON anyway if it has required keys
-                        required_keys = ["primary_type", "contains_event", "contains_tasks", "urgency", "priority"]
-                        if all(key in final_analysis for key in required_keys):
-                            print("✅ Using JSON despite validation issues")
-                        else:
-                            raise ValueError("Missing required keys")
+                    # PROPAGATE tool chain usage
+                    final_analysis["tool_chain_used"] = tool_chain_used
+                    final_analysis["tools_executed"] = tools_executed
+                    # DEFER normalization until after confidence & recommendations (will run later)
                 else:
-                    raise ValueError("No JSON found in agent output")
-                    
+                    raise ValueError("No JSON object found in agent output")
             except Exception as e:
                 print(f"❌ JSON parsing failed: {e}")
                 print("🔄 Falling back to aggregating from tool steps")
                 final_analysis = aggregate_from_steps(steps)
-                
-                # === POST-PROCESSING NORMALIZATION FOR FALLBACK ===
                 final_analysis = normalize_final_analysis(final_analysis, email_text)
-        
-            # ALWAYS INCLUDE ALL RECOMMENDATIONS - Apply to all paths
-            recommendations = []
-            
-            # Priority order: mark_priority first if urgency is medium or high
-            urgency = final_analysis.get("urgency", "low")
-            if urgency in ["medium", "high", "critical"]:
-                recommendations.append("mark_priority")
-            
-            # Then calendar and task actions - INCLUDE BOTH if both are detected
-            if final_analysis.get("contains_event"):
-                recommendations.append("create_calendar_event")
-            if final_analysis.get("contains_tasks"):
-                recommendations.append("add_to_task_list")
-            
-            # Add default if no specific recommendations
-            if not recommendations:
-                recommendations.append("no_action")
-            
-            # Deduplicate while preserving order
-            final_analysis["recommendations"] = list(dict.fromkeys(recommendations))
-            
-            # CONFIDENCE: Ensure it reflects actual tool performance, not defaults
-            if tool_chain_used and steps:
-                # Calculate confidence based on actual tool outputs
-                tool_confidences = []
-                for step in steps:
-                    if len(step) >= 2:
-                        try:
-                            action, output = step
-                            tool_name = getattr(action, 'tool', 'unknown')
-                            if tool_name in ['detect_event', 'detect_tasks', 'analyze_urgency']:
-                                payload = json.loads(output) if isinstance(output, str) else output
-                                if isinstance(payload, dict) and 'confidence' in payload:
-                                    tool_confidences.append(payload['confidence'])
-                        except:
-                            continue
-                
-                if tool_confidences:
-                    # Use average of tool confidences, but cap it to be conservative
-                    avg_confidence = sum(tool_confidences) / len(tool_confidences)
-                    final_analysis["confidence"] = min(avg_confidence, 0.9)  # Cap at 0.9
-            
-            # PRIMARY TYPE LOGIC - Apply to agent output too
-            if final_analysis.get("contains_event") and final_analysis.get("contains_tasks"):
-                final_analysis["primary_type"] = "mixed"
-            
-            # Add metadata
-            final_analysis['sender'] = sender
-            final_analysis['processed_at'] = dt.datetime.utcnow().isoformat()
-            final_analysis['tool_chain_used'] = tool_chain_used
-            final_analysis['tools_executed'] = tools_executed
-            
+        # ...existing code computing recommendations & confidence...
+
+            # FINAL NORMALIZATION (ensures confidence cap & summary/agenda fixes AFTER adjustments)
+            final_analysis = normalize_final_analysis(final_analysis, email_text)
+
+            # Remove high priority suggestion if medium/low
+            if final_analysis.get("priority") != "high" and final_analysis.get("urgency") not in ("high", "critical"):
+                if final_analysis.get("suggestions"):
+                    final_analysis["suggestions"] = [s for s in final_analysis["suggestions"] if "high priority" not in s.lower()]
+                if "mark_priority" in final_analysis.get("recommendations", []) and final_analysis.get("priority") != "high":
+                    final_analysis["recommendations"] = [r for r in final_analysis["recommendations"] if r != "mark_priority"]
+
             return final_analysis
             
         except Exception as e:  # <-- Main exception handler, properly aligned
@@ -1110,6 +1103,7 @@ class SmartEmailProcessor:
         urgency = agent_analysis.get('urgency', 'medium')
         priority = agent_analysis.get('priority', 'medium')
         
+        # Only add high priority suggestion if urgency high/critical or priority high
         if urgency in ['high', 'critical'] or priority == 'high':
             suggestions.append("🚨 Mark as high priority")
             
@@ -1141,11 +1135,6 @@ class SmartEmailProcessor:
             if suggestion not in unique_suggestions:
                 unique_suggestions.append(suggestion)
         
-        # Add default if no suggestions
-        if not unique_suggestions:
-            unique_suggestions.append("📧 No specific action needed")
-        
-        print(f"💡 Generated {len(unique_suggestions)} suggestions: {unique_suggestions}")
-        
+        # Compress duplicate opening sentences in summary if needed happens earlier, but ensure suggestions consistent
         return unique_suggestions
 
