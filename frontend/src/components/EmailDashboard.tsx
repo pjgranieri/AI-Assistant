@@ -356,6 +356,8 @@ const EmailDashboard: React.FC = () => {
     setIsLoading(false)
   }
 
+  // Add these helper functions after your state declarations:
+
   const getPriorityColor = (priority: string) => {
     switch (priority.toLowerCase()) {
       case 'high': return '#e53e3e'
@@ -385,21 +387,34 @@ const EmailDashboard: React.FC = () => {
     }
   }
 
-  const getSortIcon = (option: SortOption) => {
-    if (sortBy !== option) return '↕️'
+  // Add this function around line 390 (after getSentimentEmoji):
+  const getSortIcon = (sortOption: SortOption) => {
+    if (sortBy !== sortOption) return ''
     return sortDirection === 'asc' ? '↑' : '↓'
   }
 
+  // Add this before your JSX return (around line 400):
   const dateLimits = getDateLimits()
 
-  // Add this function after your other helper functions (around line 280):
+  // Update your formatDate function to handle timezone properly:
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+    if (!dateString) return 'Unknown date'
+    
+    try {
+      // Parse as UTC if no timezone indicator
+      const date = dateString.includes('Z') ? new Date(dateString) : new Date(dateString + 'Z')
+      
+      // Format in local timezone
+      return date.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      })
+    } catch (error) {
+      return 'Invalid date'
+    }
   }
 
   // Add state for sync status message
@@ -719,49 +734,78 @@ const EmailDashboard: React.FC = () => {
         <div className="analytics-tab">
           <h2>📊 Analytics</h2>
           
-          {/* Add Cost Monitor */}
+          
+          {/* Cost Monitor */}
           <CostMonitor userId={USER_ID} />
           
           {analytics ? (
             <div className="analytics-grid">
               <div className="analytics-card">
-                <h3>📊 Categories</h3>
+                <h3>📁 Email Categories</h3>
                 <div className="analytics-list">
-                  {analytics.categories.map((cat, index) => (
+                  {analytics.categories.length > 0 ? analytics.categories.map((cat, index) => (
                     <div key={index} className="analytics-item">
                       <span className="analytics-label">{cat.category}</span>
                       <span className="analytics-count">{cat.count}</span>
                     </div>
-                  ))}
+                  )) : (
+                    <div className="analytics-item">
+                      <span className="analytics-label">No categories yet</span>
+                      <span className="analytics-count">0</span>
+                    </div>
+                  )}
                 </div>
               </div>
               
               <div className="analytics-card">
-                <h3>🔥 Priorities</h3>
+                <h3>🚨 Priority Levels</h3>
                 <div className="analytics-list">
-                  {analytics.priorities.map((pri, index) => (
+                  {analytics.priorities.length > 0 ? analytics.priorities.map((pri, index) => (
                     <div key={index} className="analytics-item">
-                      <span className="analytics-label">{pri.priority}</span>
+                      <span className="analytics-label">
+                        {pri.priority === 'high' && '🔴 '}
+                        {pri.priority === 'medium' && '🟡 '}
+                        {pri.priority === 'low' && '🟢 '}
+                        {pri.priority}
+                      </span>
                       <span className="analytics-count">{pri.count}</span>
                     </div>
-                  ))}
+                  )) : (
+                    <div className="analytics-item">
+                      <span className="analytics-label">No priorities yet</span>
+                      <span className="analytics-count">0</span>
+                    </div>
+                  )}
                 </div>
               </div>
               
               <div className="analytics-card">
-                <h3>😊 Sentiments</h3>
+                <h3>😊 Email Sentiments</h3>
                 <div className="analytics-list">
-                  {analytics.sentiments.map((sent, index) => (
+                  {analytics.sentiments.length > 0 ? analytics.sentiments.map((sent, index) => (
                     <div key={index} className="analytics-item">
-                      <span className="analytics-label">{sent.sentiment}</span>
+                      <span className="analytics-label">
+                        {sent.sentiment === 'positive' && '😊 '}
+                        {sent.sentiment === 'neutral' && '😐 '}
+                        {sent.sentiment === 'negative' && '😔 '}
+                        {sent.sentiment}
+                      </span>
                       <span className="analytics-count">{sent.count}</span>
                     </div>
-                  ))}
+                  )) : (
+                    <div className="analytics-item">
+                      <span className="analytics-label">No sentiments yet</span>
+                      <span className="analytics-count">0</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           ) : (
-            <p>No analytics data available</p>
+            <div className="no-results">
+              <h3>No analytics data available</h3>
+              <p>Add some emails first to see your analytics.</p>
+            </div>
           )}
         </div>
       )}
