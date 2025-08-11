@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import GmailSync from './GmailSync'  // Add this import
 import CostMonitor from './CostMonitor'
 import './EmailDashboard.css'
+import axios from "axios"; // Add this import if not present
 
 interface Email {
   id: number
@@ -33,6 +34,19 @@ interface FilterState {
     end: string
   }
 }
+
+type EmailSummary = {
+  // ...
+  event_details?: {
+    title?: string | null;
+    datetime?: string | null;
+    // ...
+  } | null;
+  task_details?: {
+    tasks?: Array<{ description?: string; title?: string }>;
+  } | null;
+  // ...
+};
 
 const EmailDashboard: React.FC = () => {
   console.log('EmailDashboard component rendering!') // Debug log
@@ -356,9 +370,9 @@ const EmailDashboard: React.FC = () => {
     setIsLoading(false)
   }
 
-  // Add these helper functions after your state declarations:
-
-  const getPriorityColor = (priority: string) => {
+  // Update these helper functions to be null-safe:
+  const getPriorityColor = (priority: string | null | undefined) => {
+    if (!priority) return '#718096'
     switch (priority.toLowerCase()) {
       case 'high': return '#e53e3e'
       case 'medium': return '#ed8936'
@@ -367,7 +381,8 @@ const EmailDashboard: React.FC = () => {
     }
   }
 
-  const getCategoryColor = (category: string) => {
+  const getCategoryColor = (category: string | null | undefined) => {
+    if (!category) return '#718096'
     switch (category.toLowerCase()) {
       case 'work': return '#3182ce'
       case 'personal': return '#805ad5'
@@ -378,7 +393,8 @@ const EmailDashboard: React.FC = () => {
     }
   }
 
-  const getSentimentEmoji = (sentiment: string) => {
+  const getSentimentEmoji = (sentiment: string | null | undefined) => {
+    if (!sentiment) return '😐'
     switch (sentiment.toLowerCase()) {
       case 'positive': return '😊'
       case 'negative': return '😔'
@@ -586,43 +602,115 @@ const EmailDashboard: React.FC = () => {
             </div>
           ) : sortedEmails.length > 0 ? (
             <div className="emails-list">
-              {sortedEmails.map((email) => (
-                <div key={email.id} className="email-card">
-                  <div className="email-header">
-                    <div className="email-meta">
-                      <div className="email-sender">{email.sender}</div>
-                      <div className="email-date">{formatDate(email.received_at)}</div>
+              {sortedEmails.map((email) => {
+                const recommendations = email.recommendations || [];
+                const eventDetails = email.event_details || {};
+                const taskDetails = (email.task_details && email.task_details.tasks) ? email.task_details.tasks : [];
+                
+                return (
+                  <div key={email.id} className="email-card">
+                    <div className="email-header">
+                      <div className="email-meta">
+                        <div className="email-sender">{email.sender}</div>
+                        <div className="email-date">{formatDate(email.received_at)}</div>
+                      </div>
+                      <div className="email-badges">
+                        <span 
+                          className="priority-badge" 
+                          style={{ backgroundColor: getPriorityColor(email.priority) }}
+                        >
+                          {email.priority || "N/A"}
+                        </span>
+                        <span 
+                          className="category-badge"
+                          style={{ backgroundColor: getCategoryColor(email.category) }}
+                        >
+                          {email.category || "N/A"}
+                        </span>
+                        <span className="sentiment-badge">
+                          {getSentimentEmoji(email.sentiment)}
+                        </span>
+                      </div>
                     </div>
-                    <div className="email-badges">
-                      <span 
-                        className="priority-badge" 
-                        style={{ backgroundColor: getPriorityColor(email.priority) }}
+                    
+                    <h3 className="email-subject">{email.subject}</h3>
+                    <p className="email-summary">{email.summary}</p>
+                    
+                    {email.action_items && email.action_items !== 'None' && (
+                      <div className="action-items">
+                        <h4>📋 Action Items:</h4>
+                        <pre>{email.action_items}</pre>
+                      </div>
+                    )}
+
+                    {/* Render event details if available and show suggested time */}
+                    {email.event_details && (
+                      (email.event_details.title || email.event_details.datetime || email.event_details.location) && (
+                        <div className="event-details">
+                          {email.event_details.title && (
+                            <div>
+                              <strong>Event:</strong> {email.event_details.title}
+                            </div>
+                          )}
+                          {email.event_details.datetime && (
+                            <div>
+                              <strong>Suggested Time:</strong> {formatDate(email.event_details.datetime)}
+                            </div>
+                          )}
+                          {email.event_details.location && (
+                            <div>
+                              <strong>Location:</strong> {email.event_details.location}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    )}
+
+                    {/* Render task details with suggested times */}
+                    {email.task_details && email.task_details.tasks && email.task_details.tasks.length > 0 && (
+                      <ul>
+                        {email.task_details.tasks.map((task, idx) => (
+                          <li key={idx}>
+                            {task.description || task.title || "Untitled Task"}
+                            {task.due_date && (
+                              <>
+                                <span style={{ marginLeft: 8, color: "#3182ce" }}>
+                                  (Suggested: {formatDate(task.due_date)})
+                                </span>
+                                <button
+                                  style={{ marginLeft: 8 }}
+                                  onClick={() => handleAddToCalendar(task)}
+                                >
+                                  Add to Calendar
+                                </button>
+                              </>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
+                    {/* Add event to AI Calendar button */}
+                    {email.event_details && email.event_details.datetime && (
+                      <button
+                        style={{ marginLeft: 8 }}
+                        onClick={() =>
+                          handleAddToAICalendar({
+                            userId: USER_ID,
+                            title: email.event_details.title || "Event",
+                            description: email.summary || "",
+                            start: email.event_details.datetime,
+                            end: email.event_details.end_datetime,
+                            location: email.event_details.location,
+                          })
+                        }
                       >
-                        {email.priority}
-                      </span>
-                      <span 
-                        className="category-badge"
-                        style={{ backgroundColor: getCategoryColor(email.category) }}
-                      >
-                        {email.category}
-                      </span>
-                      <span className="sentiment-badge">
-                        {getSentimentEmoji(email.sentiment)}
-                      </span>
-                    </div>
+                        Add Event to AI Calendar
+                      </button>
+                    )}
                   </div>
-                  
-                  <h3 className="email-subject">{email.subject}</h3>
-                  <p className="email-summary">{email.summary}</p>
-                  
-                  {email.action_items && email.action_items !== 'None' && (
-                    <div className="action-items">
-                      <h4>📋 Action Items:</h4>
-                      <pre>{email.action_items}</pre>
-                    </div>
-                  )}
-                </div>
-              ))}
+                )
+              })}
             </div>
           ) : (
             <div className="no-results">
@@ -679,43 +767,70 @@ const EmailDashboard: React.FC = () => {
           <div className="search-results">
             {searchResults.length > 0 ? (
               <div className="emails-list">
-                {searchResults.map((email) => (
-                  <div key={email.id} className="email-card">
-                    <div className="email-header">
-                      <div className="email-meta">
-                        <div className="email-sender">{email.sender}</div>
-                        <div className="email-date">{formatDate(email.received_at)}</div>
+                {searchResults.map((email) => {
+                  const recommendations = email.recommendations || [];
+                  const eventDetails = email.event_details || {};
+                  const taskDetails = (email.task_details && email.task_details.tasks) ? email.task_details.tasks : [];
+                  
+                  return (
+                    <div key={email.id} className="email-card">
+                      <div className="email-header">
+                        <div className="email-meta">
+                          <div className="email-sender">{email.sender}</div>
+                          <div className="email-date">{formatDate(email.received_at)}</div>
+                        </div>
+                        <div className="email-badges">
+                          <span 
+                            className="priority-badge" 
+                            style={{ backgroundColor: getPriorityColor(email.priority) }}
+                          >
+                            {email.priority}
+                          </span>
+                          <span 
+                            className="category-badge"
+                            style={{ backgroundColor: getCategoryColor(email.category) }}
+                          >
+                            {email.category}
+                          </span>
+                          <span className="sentiment-badge">
+                            {getSentimentEmoji(email.sentiment)}
+                          </span>
+                        </div>
                       </div>
-                      <div className="email-badges">
-                        <span 
-                          className="priority-badge" 
-                          style={{ backgroundColor: getPriorityColor(email.priority) }}
-                        >
-                          {email.priority}
-                        </span>
-                        <span 
-                          className="category-badge"
-                          style={{ backgroundColor: getCategoryColor(email.category) }}
-                        >
-                          {email.category}
-                        </span>
-                        <span className="sentiment-badge">
-                          {getSentimentEmoji(email.sentiment)}
-                        </span>
-                      </div>
+                      
+                      <h3 className="email-subject">{email.subject}</h3>
+                      <p className="email-summary">{email.summary}</p>
+                      
+                      {email.action_items && email.action_items !== 'None' && (
+                        <div className="action-items">
+                          <h4>📋 Action Items:</h4>
+                          <pre>{email.action_items}</pre>
+                        </div>
+                      )}
+
+                      {/* Render event details if available */}
+                      {eventDetails && (
+                        <div>
+                          <strong>Event:</strong> {eventDetails.title || "Untitled"}
+                          <br />
+                          <strong>Date:</strong> {eventDetails.datetime || "N/A"}
+                          <br />
+                          <strong>Location:</strong> {eventDetails.location || "N/A"}
+                          {/* ...other fields... */}
+                        </div>
+                      )}
+
+                      {/* Render task details if available */}
+                      {taskDetails.length > 0 && (
+                        <ul>
+                          {taskDetails.map((task, idx) => (
+                            <li key={idx}>{task.description || task.title || "Untitled Task"}</li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
-                    
-                    <h3 className="email-subject">{email.subject}</h3>
-                    <p className="email-summary">{email.summary}</p>
-                    
-                    {email.action_items && email.action_items !== 'None' && (
-                      <div className="action-items">
-                        <h4>📋 Action Items:</h4>
-                        <pre>{email.action_items}</pre>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             ) : searchQuery ? (
               <div className="no-results">
@@ -818,6 +933,48 @@ const EmailDashboard: React.FC = () => {
       )}
     </div>
   )
+}
+
+function formatDate(iso: string | null | undefined) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleString();
+}
+
+async function handleAddToAICalendar({
+  userId,
+  title,
+  description,
+  start,
+  end,
+  location,
+}: {
+  userId: string;
+  title: string;
+  description?: string;
+  start: string;
+  end?: string;
+  location?: string;
+}) {
+  try {
+    const res = await axios.post("http://localhost:8000/api/calendar/events", {
+      user_id: userId,
+      title,
+      description,
+      start,
+      end,
+      location,
+    });
+    if (res.data.success) {
+      alert("Event added to your AI Assistant Calendar!");
+      // Optionally: trigger a calendar refresh here
+    } else {
+      alert("Failed to add event to calendar.");
+    }
+  } catch (err) {
+    alert("Failed to add event to calendar.");
+  }
 }
 
 export default EmailDashboard

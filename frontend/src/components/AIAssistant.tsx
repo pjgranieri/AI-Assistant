@@ -1,118 +1,45 @@
 import React, { useState } from 'react'
 
-interface SummaryResponse {
+interface EnhancedEmailAnalysis {
   summary: string
-  suggestions?: string
-}
-
-interface DailyBriefResponse {
-  date: string
-  events_count: number
-  schedule_summary: string
-  suggestions: string
-  events: Array<{
-    title: string
-    description: string
-    datetime: string
-  }>
+  suggestions?: string[]
+  primary_type?: string
+  contains_event?: boolean
+  contains_tasks?: boolean
+  urgency?: string
+  priority?: string
+  event_details?: any
+  task_details?: { tasks?: Array<any> }
+  recommendations?: string[]
+  confidence?: number
+  reasoning?: string
+  tool_chain_used?: boolean
 }
 
 export default function AIAssistant() {
   const [content, setContent] = useState('')
-  const [contentType, setContentType] = useState('general')
-  const [summary, setSummary] = useState<SummaryResponse | null>(null)
+  const [subject, setSubject] = useState('')
+  const [analysis, setAnalysis] = useState<EnhancedEmailAnalysis | null>(null)
   const [loading, setLoading] = useState(false)
 
   const handleSummarize = async () => {
     if (!content.trim()) return
-    
     setLoading(true)
     try {
-      const response = await fetch('http://localhost:8000/ai/summarize', {
+      const resp = await fetch('http://localhost:8000/ai/summarize-email', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          content,
-          content_type: contentType,
-        }),
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        setSummary(data)
-      } else {
-        console.error('Summarization failed')
-        setSummary({
-          summary: 'Sorry, I encountered an error while analyzing your content. Please try again.',
+          subject: subject || '(No Subject)',
+            content,
+          sender: 'you@example.com'
         })
-      }
-    } catch (error) {
-      console.error('Error:', error)
-      setSummary({
-        summary: 'Sorry, I could not connect to the AI service. Please check if the backend is running.',
       })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const getDailyBrief = async () => {
-    setLoading(true)
-    try {
-      const today = new Date().toISOString().split('T')[0]
-      const response = await fetch(`http://localhost:8000/ai/daily-brief?date=${today}`)
-      
-      if (response.ok) {
-        const data: DailyBriefResponse = await response.json()
-        setSummary({
-          summary: data.schedule_summary,
-          suggestions: data.suggestions
-        })
-      } else {
-        console.error('Daily brief failed')
-        setSummary({
-          summary: 'Sorry, I could not generate your daily brief. Please try again.',
-        })
-      }
-    } catch (error) {
-      console.error('Error:', error)
-      setSummary({
-        summary: 'Sorry, I could not connect to the AI service. Please check if the backend is running.',
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const getCalendarSummary = async () => {
-    setLoading(true)
-    try {
-      const response = await fetch('http://localhost:8000/ai/summarize-calendar', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          include_suggestions: true
-        }),
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        setSummary(data)
-      } else {
-        console.error('Calendar summary failed')
-        setSummary({
-          summary: 'Sorry, I could not analyze your calendar. Please try again.',
-        })
-      }
-    } catch (error) {
-      console.error('Error:', error)
-      setSummary({
-        summary: 'Sorry, I could not connect to the AI service. Please check if the backend is running.',
-      })
+      if (!resp.ok) throw new Error('Request failed')
+      const data: EnhancedEmailAnalysis = await resp.json()
+      setAnalysis(data)
+    } catch (e) {
+      setAnalysis({ summary: 'Error performing analysis.' })
     } finally {
       setLoading(false)
     }
@@ -121,66 +48,82 @@ export default function AIAssistant() {
   return (
     <div className="ai-assistant-section">
       <h2>AI Assistant</h2>
-      
-      <div className="content-input">
-        <select 
-          value={contentType} 
-          onChange={(e) => setContentType(e.target.value)}
-          className="content-type-select"
-        >
-          <option value="general">General Content</option>
-          <option value="email">Email</option>
-        </select>
-        
-        <textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="Paste your content here for AI analysis..."
-          rows={4}
-          className="content-textarea"
-        />
-        
-        <div className="action-buttons">
-          <button 
-            onClick={handleSummarize} 
-            disabled={loading || !content.trim()}
-            className="summarize-btn"
-          >
-            {loading ? 'Analyzing...' : 'Analyze Text'}
-          </button>
-          
-          <button 
-            onClick={getDailyBrief} 
-            disabled={loading}
-            className="daily-brief-btn"
-          >
-            {loading ? 'Loading...' : 'Daily Brief'}
-          </button>
-          
-          <button 
-            onClick={getCalendarSummary} 
-            disabled={loading}
-            className="calendar-summary-btn"
-          >
-            {loading ? 'Loading...' : 'Calendar Summary'}
-          </button>
-        </div>
-      </div>
 
-      {summary && (
-        <div className="summary-result">
-          <h3>AI Analysis</h3>
-          <div className="summary-content">
-            <h4>Summary:</h4>
-            <p>{summary.summary}</p>
-          </div>
-          
-          {summary.suggestions && (
-            <div className="suggestions-content">
-              <h4>Suggestions:</h4>
-              <p>{summary.suggestions}</p>
-            </div>
+      <input
+        placeholder="Subject (optional)"
+        value={subject}
+        onChange={(e)=>setSubject(e.target.value)}
+        style={{ width:'100%', marginBottom:8, padding:8 }}
+      />
+      <textarea
+        value={content}
+        onChange={(e)=>setContent(e.target.value)}
+        placeholder="Paste email or text..."
+        rows={5}
+        style={{ width:'100%', padding:8 }}
+      />
+      <button onClick={handleSummarize} disabled={loading || !content.trim()}>
+        {loading ? 'Analyzing...' : 'Analyze Email'}
+      </button>
+
+      {analysis && (
+        <div style={{ marginTop:20 }}>
+          <h3>Summary</h3>
+          <p>{analysis.summary}</p>
+
+            <details open>
+            <summary>Classification</summary>
+            <p>
+              Type: {analysis.primary_type || '-'} |
+              Event: {String(analysis.contains_event)} |
+              Tasks: {String(analysis.contains_tasks)}
+            </p>
+            <p>
+              Urgency: {analysis.urgency || '-'} |
+              Priority: {analysis.priority || '-'} |
+              Confidence: {analysis.confidence?.toFixed(2) || '-'}
+            </p>
+          </details>
+
+          {analysis.event_details && (
+            <details style={{ marginTop:10 }}>
+              <summary>Event Details</summary>
+              <pre style={{ whiteSpace:'pre-wrap' }}>{JSON.stringify(analysis.event_details, null, 2)}</pre>
+            </details>
           )}
+
+          {analysis.task_details?.tasks && analysis.task_details.tasks.length > 0 && (
+            <details style={{ marginTop:10 }}>
+              <summary>Task Details</summary>
+              <ul>
+                {analysis.task_details.tasks.map((t,i)=>(
+                  <li key={i}>{t.description || JSON.stringify(t)}</li>
+                ))}
+              </ul>
+            </details>
+          )}
+
+          {analysis.recommendations && analysis.recommendations.length > 0 && (
+            <details style={{ marginTop:10 }}>
+              <summary>Recommendations</summary>
+              <ul>
+                {analysis.recommendations.map(r => <li key={r}>{r}</li>)}
+              </ul>
+            </details>
+          )}
+
+          {analysis.reasoning && (
+            <details style={{ marginTop:10 }}>
+              <summary>Reasoning</summary>
+              <p style={{ whiteSpace:'pre-wrap' }}>{analysis.reasoning}</p>
+            </details>
+          )}
+        </div>
+      )}
+
+      {analysis && (
+        <div style={{ marginTop:8, fontSize:12, opacity:0.7 }}>
+          Mode: {analysis.tool_chain_used ? 'Agent (tool chain)' : 'Fallback'}
         </div>
       )}
     </div>

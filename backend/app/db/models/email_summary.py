@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, Float
+from sqlalchemy import Column, Integer, String, DateTime, Text, Float, Boolean
+from sqlalchemy.dialects.postgresql import JSONB  # ensure available (Postgres)
 from pgvector.sqlalchemy import Vector
 from app.db.base import Base
 import datetime as dt
@@ -26,3 +27,11 @@ class EmailSummary(Base):
     processing_status = Column(String, default="processed")  # processed, failed, pending
     processing_cost = Column(Float, default=0.0)  # Track LLM costs
     last_processed = Column(DateTime, default=dt.datetime.utcnow)
+
+    # --- New agent-driven enrichment columns ---
+    agent_analysis = Column(JSONB, nullable=True)          # full structured JSON
+    primary_type = Column(String, nullable=True)
+    urgency = Column(String, nullable=True)
+    contains_event = Column(Boolean, default=False)
+    contains_tasks = Column(Boolean, default=False)
+    tool_chain_used = Column(Boolean, server_default="false", default=False)
