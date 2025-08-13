@@ -8,6 +8,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.api import email, event, auth, ai_assistant, gmail  # Add gmail import
 from app.deps import get_db
+from app.api.planner import router as planner_router
 
 app = FastAPI()
 
@@ -29,6 +30,7 @@ app.include_router(email.router, prefix="/api", tags=["emails"])
 app.include_router(gmail.router, prefix="/api", tags=["gmail"])  # Add Gmail router
 app.include_router(event.router, tags=["events"])
 app.include_router(ai_assistant.router, prefix="/ai", tags=["ai"])
+app.include_router(planner_router, prefix="/planner", tags=["planner"])
 
 @app.get("/health")
 def health_check(db=Depends(get_db)):

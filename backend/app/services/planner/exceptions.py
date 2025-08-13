@@ -1,0 +1,2 @@
+class CycleDetected(Exception):
+    pass

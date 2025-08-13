@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import GmailSync from './GmailSync'  // Add this import
 import CostMonitor from './CostMonitor'
 import './EmailDashboard.css'
-import axios from "axios"; // Add this import if not present
+import axios from "axios" // Add this import if not present
 
 interface Email {
   id: number
